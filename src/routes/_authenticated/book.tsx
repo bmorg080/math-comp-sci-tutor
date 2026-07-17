@@ -71,9 +71,10 @@ function BookPage() {
     onSuccess: (res) => {
       if (!res.ok) {
         toast.error(
-          `No credits available. This lesson would cost $${(res.priceCents / 100).toFixed(2)}. Purchase a lesson or bundle first.`,
+          `No credits available. This lesson costs $${(res.priceCents / 100).toFixed(2)}. Buy credits to continue.`,
         );
         setPendingSlot(null);
+        setBuyOpen(true);
         return;
       }
       toast.success("Lesson booked! Confirmation email coming shortly.");
