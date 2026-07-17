@@ -33,7 +33,8 @@ export const getAdminOverview = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
 
-    const [settingsRes, upcomingRes, recentRes, accountsRes, subjectsRes] = await Promise.all([
+    const nowIso = new Date().toISOString();
+    const [settingsRes, upcomingRes, recentRes, accountsRes, subjectsRes, creditsRes, lessonStatsRes] = await Promise.all([
       supabase
         .from("settings")
         .select("zoom_link, tutor_name, tutor_email, tutor_timezone, tutor_bio, cancellation_hours, credit_expiry_months, bundle_size, bundle_discount_pct, weekly_availability")
@@ -41,29 +42,54 @@ export const getAdminOverview = createServerFn({ method: "GET" })
         .maybeSingle(),
       supabase
         .from("lessons")
-        .select("id, starts_at, status, student:students(name), subject:subjects(name), account:accounts(display_name)")
+        .select("id, starts_at, status, credit_id, account_id, student_id, subject_id, student:students(id, name), subject:subjects(id, name), account:accounts(id, display_name)")
         .eq("status", "scheduled")
-        .gte("starts_at", new Date().toISOString())
+        .gte("starts_at", nowIso)
         .order("starts_at", { ascending: true })
-        .limit(50),
+        .limit(100),
       supabase
         .from("lessons")
         .select("id, starts_at, status, student:students(name), subject:subjects(name), account:accounts(display_name)")
-        .lt("starts_at", new Date().toISOString())
+        .lt("starts_at", nowIso)
         .order("starts_at", { ascending: false })
-        .limit(30),
+        .limit(50),
       supabase
         .from("accounts")
         .select("id, display_name, timezone, created_at")
         .order("created_at", { ascending: false }),
       supabase.from("subjects").select("id, name, price_cents, active, sort_order").order("sort_order"),
+      supabase
+        .from("credits")
+        .select("account_id, consumed_lesson_id, refunded_at, expires_at")
+        .is("consumed_lesson_id", null)
+        .is("refunded_at", null)
+        .gt("expires_at", nowIso),
+      supabase.from("lessons").select("account_id, status"),
     ]);
+
+    const creditBalance = new Map<string, number>();
+    for (const c of creditsRes.data ?? []) {
+      creditBalance.set(c.account_id, (creditBalance.get(c.account_id) ?? 0) + 1);
+    }
+    const lessonCounts = new Map<string, { upcoming: number; completed: number; cancelled: number }>();
+    for (const l of lessonStatsRes.data ?? []) {
+      const bucket = lessonCounts.get(l.account_id) ?? { upcoming: 0, completed: 0, cancelled: 0 };
+      if (l.status === "scheduled") bucket.upcoming += 1;
+      else if (l.status === "completed") bucket.completed += 1;
+      else if (l.status === "cancelled") bucket.cancelled += 1;
+      lessonCounts.set(l.account_id, bucket);
+    }
+    const accounts = (accountsRes.data ?? []).map((a) => ({
+      ...a,
+      credits: creditBalance.get(a.id) ?? 0,
+      lessons: lessonCounts.get(a.id) ?? { upcoming: 0, completed: 0, cancelled: 0 },
+    }));
 
     return {
       settings: settingsRes.data,
       upcoming: upcomingRes.data ?? [],
       recent: recentRes.data ?? [],
-      accounts: accountsRes.data ?? [],
+      accounts,
       subjects: subjectsRes.data ?? [],
     };
   });
