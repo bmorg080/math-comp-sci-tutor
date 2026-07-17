@@ -375,6 +375,7 @@ export type Database = {
           name: string
           price_cents: number
           sort_order: number
+          stripe_product_slug: string | null
         }
         Insert: {
           active?: boolean
@@ -384,6 +385,7 @@ export type Database = {
           name: string
           price_cents: number
           sort_order?: number
+          stripe_product_slug?: string | null
         }
         Update: {
           active?: boolean
@@ -393,6 +395,7 @@ export type Database = {
           name?: string
           price_cents?: number
           sort_order?: number
+          stripe_product_slug?: string | null
         }
         Relationships: []
       }
