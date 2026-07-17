@@ -249,6 +249,8 @@ export const bookLesson = createServerFn({ method: "POST" })
             studentName,
             subjectName,
             whenForRecipient: fmt(tutorTZ),
+            whenForOther: fmt(customerTZ),
+            otherLabel: "Student's time",
             zoomLink,
             isTutor: true,
           },
