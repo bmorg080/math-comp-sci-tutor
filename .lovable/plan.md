@@ -1,35 +1,25 @@
-## Goal
+## Change your email sender domain
 
-Let a parent save an email address on each student profile. When that email is set, every lesson email (confirmation, 24h reminder, cancellation, reschedule) that currently goes to the parent also goes to the student's address.
+This is a configuration change in Cloud, not a code change — no files need to be edited. Your current sender is `notify.stemtutor.com` (still pending DNS verification).
 
-## Current state (verified)
+### Steps
 
-- `public.students` has `id, account_id, name, grade_level, notes` — no email column.
-- Lesson emails today have two recipients: the tutor, and the parent (the account owner's auth email). The "student" label in `lesson-emails.server.ts` / `booking.functions.ts` refers to that parent-side message.
-- Emails are sent from `src/lib/booking.functions.ts` (confirmation), `src/routes/api/public/hooks/lesson-reminders.ts` (reminder), and `src/lib/lesson-emails.server.ts` (cancel/reschedule). All three already load the student row via `students(name)` — we'll extend that projection.
+1. Open **Cloud → Emails → Manage Domains**.
+2. Remove `notify.stemtutor.com` (three-dot menu → Remove).
+3. Click **Add domain** and enter the new subdomain you want to send from (for example `mail.yournewdomain.com`). Use a subdomain you own — Lovable does not offer a shared sender.
+4. Lovable will show a TXT record and two NS records specific to the new domain. Add them at your DNS provider for the root domain.
+5. Wait for verification (usually minutes, up to 72h). Status is visible in **Cloud → Emails**.
 
-## Changes
+### What happens to your app
 
-### 1. Schema
-Migration adding a nullable `email text` column to `public.students`. Existing RLS/GRANTs already cover it (`st_own` policy scoped to `current_account_id()`).
+- No code changes required. The send helper (`src/lib/email-templates/send-email.ts`) reads the configured sender domain automatically.
+- While the new domain is verifying, lesson confirmation/reminder/cancellation emails will not deliver (they'll fail silently with `domain_not_verified`, and booking still succeeds).
+- Auth emails (signup, password reset) keep working via the default Lovable fallback during the transition.
+- Once verified, all lesson emails resume delivery to parent, student (if set), and tutor.
 
-### 2. Manage student email in the UI
-On the customer dashboard, add a small **Students** card listing each student on the account with an inline "Edit email" action (dialog with name + email fields, email optional, basic email validation). Uses a new `updateStudent` server function with `requireSupabaseAuth`, scoped to the caller's account. If the account has no students yet, show an "Add student" button (already needed for booking anyway — currently students are created elsewhere; if none exist we surface an "Add student" form here too).
+### Notes
 
-### 3. Include the student email on outbound lesson emails
-In all three send sites, extend the `students(...)` select to include `email`, and when the value is present pass it as an additional recipient on the parent-side send. Two options for the second recipient — I'll default to **A** unless you prefer B:
+- If you don't yet own the new root domain, buy one first via **Project Settings → Project → Domains → Buy new domain**, or any external registrar.
+- If your DNS provider can't create NS records (e.g. Shopify-managed DNS), either transfer the domain into Lovable or move DNS hosting to a provider that supports NS records (e.g. Cloudflare free plan).
 
-- **A. Send the parent-side email to both addresses in one send** (`to: [parentEmail, studentEmail]`). Simpler, one idempotency key, both see the same message with the Zoom link.
-- **B. Send a separate copy to the student** with its own idempotency key (`...-student-copy`). More log entries but lets suppression/unsubscribe apply independently per recipient.
-
-No changes to the tutor email or to the email templates themselves — the Zoom link and time are already in the body.
-
-### 4. Admin visibility
-Show the student's email (when set) in the admin customer detail view alongside the parent's email, read-only.
-
-## Out of scope
-
-- Creating a separate login for the student. This is an email delivery change only; the student does not get an account or dashboard access.
-- Changing who the emails appear to be "from" or the template copy.
-
-Confirm option A vs B and I'll implement.
+Want me to walk through this live once you've picked the new subdomain?
