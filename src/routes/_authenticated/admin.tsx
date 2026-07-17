@@ -13,9 +13,6 @@ import {
 } from "@/lib/admin.functions";
 import { SubjectsEditor } from "@/components/admin/SubjectsEditor";
 import { AvailabilityEditor } from "@/components/admin/AvailabilityEditor";
-// keep original import terminator below
-import { getMyAccountOverview as _keep } from "@/lib/account.functions";
-void _keep;
 import { getMyAccountOverview } from "@/lib/account.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
