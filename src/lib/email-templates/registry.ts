@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react'
 import { template as lessonConfirmation } from './lesson-confirmation'
+import { template as lessonReminder } from './lesson-reminder'
 
 export interface TemplateEntry {
   component: ComponentType<any>
@@ -12,4 +13,5 @@ export interface TemplateEntry {
 
 export const TEMPLATES: Record<string, TemplateEntry> = {
   'lesson-confirmation': lessonConfirmation,
+  'lesson-reminder': lessonReminder,
 }
