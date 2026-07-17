@@ -266,6 +266,15 @@ function AdminPage() {
               />
             </div>
             <div>
+              <Label htmlFor="tz">Tutor timezone (IANA)</Label>
+              <Input
+                id="tz"
+                placeholder="America/New_York"
+                value={form.tutor_timezone}
+                onChange={(e) => setForm({ ...form, tutor_timezone: e.target.value })}
+              />
+            </div>
+            <div>
               <Label htmlFor="chours">Cancellation window (hours)</Label>
               <Input
                 id="chours"
@@ -275,6 +284,19 @@ function AdminPage() {
                 value={form.cancellation_hours}
                 onChange={(e) =>
                   setForm({ ...form, cancellation_hours: Number(e.target.value || 0) })
+                }
+              />
+            </div>
+            <div>
+              <Label htmlFor="cexp">Credit expiry (months)</Label>
+              <Input
+                id="cexp"
+                type="number"
+                min={1}
+                max={60}
+                value={form.credit_expiry_months}
+                onChange={(e) =>
+                  setForm({ ...form, credit_expiry_months: Number(e.target.value || 1) })
                 }
               />
             </div>
