@@ -22,6 +22,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 function Dashboard() {
   const fetchOverview = useServerFn(getMyAccountOverview);
   const provisionAccount = useServerFn(ensureMyAccount);
+  const claimAdmin = useServerFn(bootstrapAdminIfNone);
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [buyOpen, setBuyOpen] = useState(false);
