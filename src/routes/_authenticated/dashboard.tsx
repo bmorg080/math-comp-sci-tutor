@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { CalendarDays, Coins, LogOut, ShieldCheck, Users, BookOpen } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BuyLessonsDialog } from "@/components/BuyLessonsDialog";
+import { StudentsCard } from "@/components/StudentsCard";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
