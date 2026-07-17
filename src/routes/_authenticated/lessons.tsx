@@ -221,6 +221,64 @@ function LessonsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!rescheduleId} onOpenChange={(o) => !o && setRescheduleId(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Reschedule lesson</DialogTitle>
+            <DialogDescription>
+              Pick a new open time. Times are shown in {viewerTZ}. Rescheduling is available up to {cancellationHours} hours before the lesson.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[50vh] overflow-y-auto space-y-4 pr-1">
+            {slotsQ.isLoading ? (
+              <p className="text-sm text-muted-foreground">Loading available times…</p>
+            ) : (slotsQ.data?.slots ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground">No open times in the next 3 weeks.</p>
+            ) : (
+              Object.entries(
+                (slotsQ.data?.slots ?? []).reduce<Record<string, string[]>>((acc, iso) => {
+                  const key = new Intl.DateTimeFormat(undefined, {
+                    weekday: "long",
+                    month: "short",
+                    day: "numeric",
+                  }).format(new Date(iso));
+                  (acc[key] ||= []).push(iso);
+                  return acc;
+                }, {}),
+              ).map(([day, isos]) => (
+                <div key={day}>
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">{day}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {isos.map((iso) => (
+                      <Button
+                        key={iso}
+                        variant="outline"
+                        size="sm"
+                        disabled={rescheduleMut.isPending}
+                        onClick={() =>
+                          rescheduleId &&
+                          rescheduleMut.mutate({ lessonId: rescheduleId, startsAtISO: iso })
+                        }
+                      >
+                        {new Intl.DateTimeFormat(undefined, {
+                          hour: "numeric",
+                          minute: "2-digit",
+                        }).format(new Date(iso))}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRescheduleId(null)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
