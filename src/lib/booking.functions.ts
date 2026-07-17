@@ -186,7 +186,7 @@ export const bookLesson = createServerFn({ method: "POST" })
     // Send confirmation emails (best-effort, don't fail booking on email errors)
     try {
       const { sendTemplateEmail } = await import("@/lib/email-templates/send-email");
-      const [{ data: settings }, { data: studentRow }, { data: subjectRow }, { data: authUser }] =
+      const [{ data: settings }, { data: studentRow }, { data: subjectRow }, { data: accountRow }, { data: authUser }] =
         await Promise.all([
           supabase
             .from("settings")
@@ -195,6 +195,7 @@ export const bookLesson = createServerFn({ method: "POST" })
             .maybeSingle(),
           supabase.from("students").select("name").eq("id", data.studentId).maybeSingle(),
           supabase.from("subjects").select("name").eq("id", data.subjectId).maybeSingle(),
+          supabase.from("accounts").select("timezone, display_name").eq("id", accountId).maybeSingle(),
           supabase.auth.getUser(),
         ]);
 
