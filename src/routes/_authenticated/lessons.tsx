@@ -38,8 +38,11 @@ export const Route = createFileRoute("/_authenticated/lessons")({
 function LessonsPage() {
   const fetchLessons = useServerFn(listMyLessons);
   const doCancel = useServerFn(cancelMyLesson);
+  const doReschedule = useServerFn(rescheduleMyLesson);
+  const fetchSlots = useServerFn(listOpenSlots);
   const qc = useQueryClient();
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [rescheduleId, setRescheduleId] = useState<string | null>(null);
 
   const viewerTZ = useMemo(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
@@ -47,6 +50,11 @@ function LessonsPage() {
   );
 
   const q = useQuery({ queryKey: ["my-lessons"], queryFn: () => fetchLessons() });
+  const slotsQ = useQuery({
+    queryKey: ["open-slots"],
+    queryFn: () => fetchSlots({ data: { days: 21 } }),
+    enabled: !!rescheduleId,
+  });
 
   const cancelMut = useMutation({
     mutationFn: (lessonId: string) => doCancel({ data: { lessonId } }),
@@ -57,6 +65,18 @@ function LessonsPage() {
       setConfirmId(null);
       qc.invalidateQueries({ queryKey: ["my-lessons"] });
       qc.invalidateQueries({ queryKey: ["account-overview"] });
+      qc.invalidateQueries({ queryKey: ["open-slots"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const rescheduleMut = useMutation({
+    mutationFn: (v: { lessonId: string; startsAtISO: string }) =>
+      doReschedule({ data: v }),
+    onSuccess: () => {
+      toast.success("Lesson rescheduled — confirmation email sent.");
+      setRescheduleId(null);
+      qc.invalidateQueries({ queryKey: ["my-lessons"] });
       qc.invalidateQueries({ queryKey: ["open-slots"] });
     },
     onError: (e: Error) => toast.error(e.message),
