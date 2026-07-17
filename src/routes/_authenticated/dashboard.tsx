@@ -122,12 +122,12 @@ function Dashboard() {
                       <tr>
                         <th className="px-4 py-3">Subject</th>
                         <th className="px-4 py-3">Price per hour</th>
-                        <th className="px-4 py-3">Bundle of 5 (10% off)</th>
+                        <th className="px-4 py-3">Pack of 5 (5% off)</th>
                       </tr>
                     </thead>
                     <tbody>
                       {data.subjects.map((s) => {
-                        const bundle = Math.round(s.effective_price_cents * 5 * 0.9);
+                        const bundle = Math.round(s.effective_price_cents * 5 * 0.95);
                         return (
                           <tr key={s.id} className="border-b last:border-b-0">
                             <td className="px-4 py-3 font-medium">
