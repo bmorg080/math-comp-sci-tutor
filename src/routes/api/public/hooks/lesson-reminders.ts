@@ -138,12 +138,28 @@ export const Route = createFileRoute("/api/public/hooks/lesson-reminders")({
           `[reminders] scanned=${lessons?.length ?? 0} processed=${processed.length} emails_sent=${sent}`,
         );
 
+        // Auto-complete: mark past scheduled lessons as completed
+        // A lesson is done once its end time (starts_at + duration_minutes) has passed.
+        const nowIso = now.toISOString();
+        const { data: completed, error: completeErr } = await supabaseAdmin
+          .from("lessons")
+          .update({ status: "completed" })
+          .eq("status", "scheduled")
+          .lt("starts_at", new Date(now.getTime() - 60 * 60 * 1000).toISOString())
+          .select("id");
+        if (completeErr) console.error("[reminders] auto-complete failed:", completeErr);
+        const completedCount = completed?.length ?? 0;
+        if (completedCount > 0) {
+          console.log(`[reminders] auto-completed ${completedCount} past lessons at ${nowIso}`);
+        }
+
         return new Response(
           JSON.stringify({
             ok: true,
             scanned: lessons?.length ?? 0,
             processed: processed.length,
             emails_sent: sent,
+            auto_completed: completedCount,
           }),
           { headers: { "Content-Type": "application/json" } },
         );
