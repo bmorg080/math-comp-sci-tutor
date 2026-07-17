@@ -117,19 +117,22 @@ function Dashboard() {
               <StatCard icon={<CalendarDays className="h-5 w-5" />} label="Upcoming lessons" value="0" />
             </div>
 
-            <div className="mt-6">
+            <div className="mt-6 flex flex-wrap gap-3">
               <Button asChild size="lg">
                 <Link to="/book">
                   <CalendarDays className="h-4 w-4" /> Book a lesson
                 </Link>
+              </Button>
+              <Button size="lg" variant="outline" onClick={() => setBuyOpen(true)}>
+                <BookOpen className="h-4 w-4" /> Buy credits
               </Button>
             </div>
 
             <section className="mt-10">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-semibold">Subjects &amp; pricing</h2>
-                <Button disabled variant="outline" size="sm" title="Coming next">
-                  <BookOpen className="h-4 w-4" /> Buy a lesson
+                <Button variant="outline" size="sm" onClick={() => setBuyOpen(true)}>
+                  <BookOpen className="h-4 w-4" /> Buy credits
                 </Button>
               </div>
               <Card>
