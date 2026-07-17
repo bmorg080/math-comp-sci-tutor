@@ -95,5 +95,21 @@ export const cancelMyLesson = createServerFn({ method: "POST" })
         .eq("id", lesson.credit_id);
     }
 
+    // Notify both parties (best-effort)
+    try {
+      const { sendLessonUpdateEmails } = await import("@/lib/lesson-emails.server");
+      await sendLessonUpdateEmails({
+        supabaseAdmin: supabase as any,
+        lessonId: lesson.id,
+        kind: "cancelled",
+        startsAtISO: lesson.starts_at,
+        refunded: refundEligible,
+        lateCancel: !refundEligible,
+        reason: data.reason,
+      });
+    } catch (e) {
+      console.error("[cancelMyLesson] email dispatch error:", e);
+    }
+
     return { ok: true, refunded: refundEligible };
   });

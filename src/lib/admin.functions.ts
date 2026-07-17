@@ -188,11 +188,13 @@ export const cancelLessonAsAdmin = createServerFn({ method: "POST" })
 
     const { data: lesson } = await supabase
       .from("lessons")
-      .select("id, credit_id, status")
+      .select("id, credit_id, status, starts_at")
       .eq("id", data.lessonId)
       .maybeSingle();
     if (!lesson) throw new Error("Lesson not found");
     if (lesson.status !== "scheduled") throw new Error("Lesson is not scheduled");
+
+    const hoursUntil = (new Date(lesson.starts_at).getTime() - Date.now()) / (1000 * 60 * 60);
 
     const { error } = await supabase
       .from("lessons")
