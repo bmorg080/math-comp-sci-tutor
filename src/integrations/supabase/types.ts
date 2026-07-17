@@ -424,6 +424,12 @@ export type Database = {
         }
         Returns: boolean
       }
+      public_busy_slots: {
+        Args: { _from: string; _to: string }
+        Returns: {
+          starts_at: string
+        }[]
+      }
     }
     Enums: {
       app_role: "admin" | "customer"
