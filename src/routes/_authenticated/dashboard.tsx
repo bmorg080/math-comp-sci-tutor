@@ -23,6 +23,22 @@ function Dashboard() {
   const provisionAccount = useServerFn(ensureMyAccount);
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const [buyOpen, setBuyOpen] = useState(false);
+
+  // Refresh on return from Stripe checkout
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("purchase") === "success") {
+      toast.success("Payment received! Credits will appear shortly.");
+      url.searchParams.delete("purchase");
+      window.history.replaceState({}, "", url.toString());
+      // Poll a couple of times for webhook-created credits
+      const tries = [1000, 3000, 6000];
+      tries.forEach((ms) =>
+        setTimeout(() => qc.invalidateQueries({ queryKey: ["account-overview"] }), ms),
+      );
+    }
+  }, [qc]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["account-overview"],
