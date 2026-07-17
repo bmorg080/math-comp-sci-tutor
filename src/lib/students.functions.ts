@@ -60,9 +60,8 @@ export const updateStudent = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    const patch: Record<string, unknown> = {};
+    const patch: { name?: string; email?: string | null; grade_level?: string | null } = {};
     if (data.name !== undefined) patch.name = data.name;
-    // Explicitly allow clearing the email by passing an empty string in the raw input.
     if ("email" in data) patch.email = data.email ?? null;
     if (data.gradeLevel !== undefined) patch.grade_level = data.gradeLevel;
 
