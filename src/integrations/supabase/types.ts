@@ -55,6 +55,7 @@ export type Database = {
           display_name: string
           id: string
           notes: string | null
+          stripe_customer_id: string | null
           timezone: string
           updated_at: string
         }
@@ -63,6 +64,7 @@ export type Database = {
           display_name: string
           id?: string
           notes?: string | null
+          stripe_customer_id?: string | null
           timezone?: string
           updated_at?: string
         }
@@ -71,6 +73,7 @@ export type Database = {
           display_name?: string
           id?: string
           notes?: string | null
+          stripe_customer_id?: string | null
           timezone?: string
           updated_at?: string
         }
