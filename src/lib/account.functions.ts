@@ -70,7 +70,7 @@ export const getMyAccountOverview = createServerFn({ method: "GET" })
     }
 
     const [studentsRes, subjectsRes, customPricesRes, creditsRes, roleRes] = await Promise.all([
-      supabase.from("students").select("id, name, grade_level").eq("account_id", member.account_id),
+      supabase.from("students").select("id, name, grade_level, email").eq("account_id", member.account_id),
       supabase
         .from("subjects")
         .select("id, name, price_cents, description, sort_order")
