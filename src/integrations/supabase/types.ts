@@ -417,6 +417,42 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_events: {
+        Row: {
+          credits_inserted: number
+          env: string
+          event_id: string
+          id: string
+          kind: string
+          notes: string | null
+          processed_at: string | null
+          received_at: string
+          session_id: string | null
+        }
+        Insert: {
+          credits_inserted?: number
+          env: string
+          event_id: string
+          id?: string
+          kind: string
+          notes?: string | null
+          processed_at?: string | null
+          received_at?: string
+          session_id?: string | null
+        }
+        Update: {
+          credits_inserted?: number
+          env?: string
+          event_id?: string
+          id?: string
+          kind?: string
+          notes?: string | null
+          processed_at?: string | null
+          received_at?: string
+          session_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
