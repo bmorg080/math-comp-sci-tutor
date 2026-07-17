@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { CalendarDays, Coins, LogOut, ShieldCheck, Users, BookOpen } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BuyLessonsDialog } from "@/components/BuyLessonsDialog";
+import { StudentsCard } from "@/components/StudentsCard";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -133,6 +134,10 @@ function Dashboard() {
                 <BookOpen className="h-4 w-4" /> Buy credits
               </Button>
             </div>
+
+            <section className="mt-10">
+              <StudentsCard students={data.students} />
+            </section>
 
             <section className="mt-10">
               <div className="mb-4 flex items-center justify-between">

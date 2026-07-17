@@ -193,13 +193,14 @@ export const bookLesson = createServerFn({ method: "POST" })
             .select("zoom_link, tutor_name, tutor_email, tutor_timezone")
             .eq("id", 1)
             .maybeSingle(),
-          supabase.from("students").select("name").eq("id", data.studentId).maybeSingle(),
+          supabase.from("students").select("name, email").eq("id", data.studentId).maybeSingle(),
           supabase.from("subjects").select("name").eq("id", data.subjectId).maybeSingle(),
           supabase.from("accounts").select("timezone, display_name").eq("id", accountId).maybeSingle(),
           supabase.auth.getUser(),
         ]);
 
       const studentName = studentRow?.name ?? "Student";
+      const studentEmail = studentRow?.email ?? null;
       const subjectName = subjectRow?.name ?? "Lesson";
       const zoomLink = settings?.zoom_link ?? "";
       const tutorTZ = settings?.tutor_timezone ?? "UTC";
@@ -223,20 +224,29 @@ export const bookLesson = createServerFn({ method: "POST" })
           timeZoneName: "short",
         }).format(new Date(startsAt));
 
-      // Send to customer
+      const customerTemplateData = {
+        studentName,
+        subjectName,
+        whenForOther: fmt(tutorTZ),
+        otherLabel: "Tutor's time",
+        zoomLink,
+        isTutor: false,
+        whenForRecipient: fmt(customerTZ),
+      };
+
+      // Send to parent
       if (parentEmail) {
         await sendTemplateEmail("lesson-confirmation", parentEmail, {
+          idempotencyKey: `lesson-confirm-parent-${lesson.id}`,
+          templateData: { ...customerTemplateData, recipientName: parentName },
+        }).catch((e) => console.error("[booking] parent email failed:", e));
+      }
+
+      // Send a copy to the student's own email if provided
+      if (studentEmail && studentEmail !== parentEmail) {
+        await sendTemplateEmail("lesson-confirmation", studentEmail, {
           idempotencyKey: `lesson-confirm-student-${lesson.id}`,
-          templateData: {
-            recipientName: parentName,
-            studentName,
-            subjectName,
-            whenForRecipient: fmt(customerTZ),
-            whenForOther: fmt(tutorTZ),
-            otherLabel: "Tutor's time",
-            zoomLink,
-            isTutor: false,
-          },
+          templateData: { ...customerTemplateData, recipientName: studentName },
         }).catch((e) => console.error("[booking] student email failed:", e));
       }
 

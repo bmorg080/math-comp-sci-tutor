@@ -37,7 +37,7 @@ export async function sendLessonUpdateEmails(opts: {
     const { data: lesson } = await supabaseAdmin
       .from("lessons")
       .select(
-        "id, account_id, student_id, subject_id, student:students(name), subject:subjects(name), account:accounts(id, display_name, timezone)",
+        "id, account_id, student_id, subject_id, student:students(name, email), subject:subjects(name), account:accounts(id, display_name, timezone)",
       )
       .eq("id", lessonId)
       .maybeSingle();
@@ -58,6 +58,7 @@ export async function sendLessonUpdateEmails(opts: {
       .maybeSingle();
 
     const studentName = lesson.student?.name ?? "Student";
+    const studentEmail: string | undefined = lesson.student?.email ?? undefined;
     const subjectName = lesson.subject?.name ?? "Lesson";
     const customerTZ = lesson.account?.timezone ?? settings?.tutor_timezone ?? "UTC";
     const tutorTZ = settings?.tutor_timezone ?? "UTC";
@@ -74,24 +75,32 @@ export async function sendLessonUpdateEmails(opts: {
 
     const baseKey = `lesson-${kind}-${lessonId}${opts.previousStartsAtISO ? `-${new Date(opts.startsAtISO).getTime()}` : ""}`;
 
+    const customerTemplateData = {
+      kind,
+      studentName,
+      subjectName,
+      whenForRecipient: whenCustomer,
+      whenForOther: whenTutor,
+      otherLabel: "Tutor's time",
+      previousWhenForRecipient: prevCustomer,
+      refunded: opts.refunded,
+      lateCancel: opts.lateCancel,
+      reason: opts.reason,
+      zoomLink,
+      isTutor: false,
+    };
+
     if (parentEmail) {
       await sendTemplateEmail("lesson-update", parentEmail, {
+        idempotencyKey: `${baseKey}-parent`,
+        templateData: { ...customerTemplateData, recipientName: parentName },
+      }).catch((e) => console.error("[lesson-update] parent email failed:", e));
+    }
+
+    if (studentEmail && studentEmail !== parentEmail) {
+      await sendTemplateEmail("lesson-update", studentEmail, {
         idempotencyKey: `${baseKey}-student`,
-        templateData: {
-          kind,
-          recipientName: parentName,
-          studentName,
-          subjectName,
-          whenForRecipient: whenCustomer,
-          whenForOther: whenTutor,
-          otherLabel: "Tutor's time",
-          previousWhenForRecipient: prevCustomer,
-          refunded: opts.refunded,
-          lateCancel: opts.lateCancel,
-          reason: opts.reason,
-          zoomLink,
-          isTutor: false,
-        },
+        templateData: { ...customerTemplateData, recipientName: studentName },
       }).catch((e) => console.error("[lesson-update] student email failed:", e));
     }
 

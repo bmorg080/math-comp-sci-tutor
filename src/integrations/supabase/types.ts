@@ -335,6 +335,7 @@ export type Database = {
         Row: {
           account_id: string
           created_at: string
+          email: string | null
           grade_level: string | null
           id: string
           name: string
@@ -343,6 +344,7 @@ export type Database = {
         Insert: {
           account_id: string
           created_at?: string
+          email?: string | null
           grade_level?: string | null
           id?: string
           name: string
@@ -351,6 +353,7 @@ export type Database = {
         Update: {
           account_id?: string
           created_at?: string
+          email?: string | null
           grade_level?: string | null
           id?: string
           name?: string

@@ -26,7 +26,7 @@ export const Route = createFileRoute("/api/public/hooks/lesson-reminders")({
         const { data: lessons, error } = await supabaseAdmin
           .from("lessons")
           .select(
-            "id, starts_at, account_id, student_id, subject_id, students(name), subjects(name), accounts(timezone, user_id)",
+            "id, starts_at, account_id, student_id, subject_id, students(name, email), subjects(name), accounts(timezone, user_id)",
           )
           .eq("status", "scheduled")
           .is("reminder_sent_at", null)
@@ -71,6 +71,7 @@ export const Route = createFileRoute("/api/public/hooks/lesson-reminders")({
           const subject = (l as any).subjects;
           const account = (l as any).accounts;
           const studentName = student?.name ?? "Student";
+          const studentEmail: string | undefined = student?.email ?? undefined;
           const subjectName = subject?.name ?? "Lesson";
           const customerTZ = account?.timezone ?? tutorTZ;
 
@@ -87,17 +88,24 @@ export const Route = createFileRoute("/api/public/hooks/lesson-reminders")({
           }
 
           try {
+            const customerTemplateData = {
+              studentName,
+              subjectName,
+              whenForRecipient: fmt(l.starts_at, customerTZ),
+              zoomLink,
+              isTutor: false,
+            };
             if (parentEmail) {
               await sendTemplateEmail("lesson-reminder", parentEmail, {
+                idempotencyKey: `lesson-reminder-parent-${l.id}`,
+                templateData: { ...customerTemplateData, recipientName: parentName },
+              });
+              sent++;
+            }
+            if (studentEmail && studentEmail !== parentEmail) {
+              await sendTemplateEmail("lesson-reminder", studentEmail, {
                 idempotencyKey: `lesson-reminder-student-${l.id}`,
-                templateData: {
-                  recipientName: parentName,
-                  studentName,
-                  subjectName,
-                  whenForRecipient: fmt(l.starts_at, customerTZ),
-                  zoomLink,
-                  isTutor: false,
-                },
+                templateData: { ...customerTemplateData, recipientName: studentName },
               });
               sent++;
             }
