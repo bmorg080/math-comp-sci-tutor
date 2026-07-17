@@ -83,10 +83,15 @@ function Dashboard() {
             Tutoring
           </Link>
           <div className="flex items-center gap-2">
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/lessons">My lessons</Link>
+            </Button>
             {data?.isAdmin && (
-              <Badge variant="secondary" className="gap-1">
-                <ShieldCheck className="h-3.5 w-3.5" /> Admin
-              </Badge>
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/admin">
+                  <ShieldCheck className="h-4 w-4" /> Admin
+                </Link>
+              </Button>
             )}
             <Button variant="ghost" size="sm" onClick={signOut}>
               <LogOut className="h-4 w-4" /> Sign out
