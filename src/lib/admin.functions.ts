@@ -91,7 +91,13 @@ export const updateSettings = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
 
-    const patch: Record<string, unknown> = {};
+    const patch: {
+      zoom_link?: string;
+      tutor_name?: string;
+      tutor_email?: string;
+      tutor_bio?: string;
+      cancellation_hours?: number;
+    } = {};
     if (data.zoom_link !== undefined) patch.zoom_link = data.zoom_link;
     if (data.tutor_name !== undefined) patch.tutor_name = data.tutor_name;
     if (data.tutor_email !== undefined) patch.tutor_email = data.tutor_email;
@@ -131,7 +137,7 @@ export const grantCredits = createServerFn({ method: "POST" })
       account_id: data.accountId,
       source: "admin_grant" as const,
       expires_at: expiresAt.toISOString(),
-      notes: data.note ?? null,
+      note: data.note ?? null,
     }));
 
     const { error } = await supabase.from("credits").insert(rows);

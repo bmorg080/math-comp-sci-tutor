@@ -74,15 +74,15 @@ export const cancelMyLesson = createServerFn({ method: "POST" })
 
     const hoursUntil = (new Date(lesson.starts_at).getTime() - Date.now()) / (1000 * 60 * 60);
     const refundEligible = hoursUntil >= cancellationHours;
-    const status = refundEligible ? "cancelled" : "cancelled_late";
+    const reasonSuffix = refundEligible ? "" : " [late cancel — no refund]";
 
     const { error: updErr } = await supabase
       .from("lessons")
       .update({
-        status,
+        status: "cancelled",
         cancelled_at: new Date().toISOString(),
         cancelled_by: userId,
-        cancellation_reason: data.reason ?? null,
+        cancellation_reason: (data.reason ?? "") + reasonSuffix || null,
       })
       .eq("id", lesson.id);
     if (updErr) throw new Error(updErr.message);
