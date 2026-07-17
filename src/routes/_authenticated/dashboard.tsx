@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { getMyAccountOverview, ensureMyAccount } from "@/lib/account.functions";
+import { bootstrapAdminIfNone } from "@/lib/admin.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +22,7 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 function Dashboard() {
   const fetchOverview = useServerFn(getMyAccountOverview);
   const provisionAccount = useServerFn(ensureMyAccount);
+  const claimAdmin = useServerFn(bootstrapAdminIfNone);
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [buyOpen, setBuyOpen] = useState(false);
@@ -83,10 +85,15 @@ function Dashboard() {
             Tutoring
           </Link>
           <div className="flex items-center gap-2">
+            <Button asChild variant="ghost" size="sm">
+              <Link to="/lessons">My lessons</Link>
+            </Button>
             {data?.isAdmin && (
-              <Badge variant="secondary" className="gap-1">
-                <ShieldCheck className="h-3.5 w-3.5" /> Admin
-              </Badge>
+              <Button asChild variant="ghost" size="sm">
+                <Link to="/admin">
+                  <ShieldCheck className="h-4 w-4" /> Admin
+                </Link>
+              </Button>
             )}
             <Button variant="ghost" size="sm" onClick={signOut}>
               <LogOut className="h-4 w-4" /> Sign out
@@ -126,6 +133,27 @@ function Dashboard() {
               <Button size="lg" variant="outline" onClick={() => setBuyOpen(true)}>
                 <BookOpen className="h-4 w-4" /> Buy credits
               </Button>
+              {!data.isAdmin && (
+                <Button
+                  size="lg"
+                  variant="ghost"
+                  onClick={async () => {
+                    try {
+                      const r = await claimAdmin();
+                      if (r.promoted) {
+                        toast.success("You're now the tutor admin.");
+                        qc.invalidateQueries({ queryKey: ["account-overview"] });
+                      } else {
+                        toast.info("An admin already exists.");
+                      }
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : "Failed");
+                    }
+                  }}
+                >
+                  <ShieldCheck className="h-4 w-4" /> Claim tutor admin
+                </Button>
+              )}
             </div>
 
             <section className="mt-10">
