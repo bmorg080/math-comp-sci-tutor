@@ -121,18 +121,22 @@ export const updateSettings = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
 
-    const patch: Record<string, unknown> = {};
-    for (const k of [
-      "zoom_link",
-      "tutor_name",
-      "tutor_email",
-      "tutor_bio",
-      "tutor_timezone",
-      "cancellation_hours",
-      "credit_expiry_months",
-    ] as const) {
-      if (data[k] !== undefined) patch[k] = data[k];
-    }
+    const patch: {
+      zoom_link?: string;
+      tutor_name?: string;
+      tutor_email?: string;
+      tutor_bio?: string;
+      tutor_timezone?: string;
+      cancellation_hours?: number;
+      credit_expiry_months?: number;
+    } = {};
+    if (data.zoom_link !== undefined) patch.zoom_link = data.zoom_link;
+    if (data.tutor_name !== undefined) patch.tutor_name = data.tutor_name;
+    if (data.tutor_email !== undefined) patch.tutor_email = data.tutor_email;
+    if (data.tutor_bio !== undefined) patch.tutor_bio = data.tutor_bio;
+    if (data.tutor_timezone !== undefined) patch.tutor_timezone = data.tutor_timezone;
+    if (data.cancellation_hours !== undefined) patch.cancellation_hours = data.cancellation_hours;
+    if (data.credit_expiry_months !== undefined) patch.credit_expiry_months = data.credit_expiry_months;
 
     const { error } = await supabase.from("settings").update(patch).eq("id", 1);
     if (error) throw new Error(error.message);
