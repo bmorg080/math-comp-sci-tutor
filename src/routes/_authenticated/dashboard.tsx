@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CalendarDays, Coins, LogOut, ShieldCheck, Users, BookOpen } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { BuyLessonsDialog } from "@/components/BuyLessonsDialog";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
