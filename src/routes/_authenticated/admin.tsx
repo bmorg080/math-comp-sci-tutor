@@ -291,6 +291,17 @@ function AdminPage() {
           </CardContent>
         </Card>
 
+        {/* Weekly availability editor */}
+        <AvailabilityEditor
+          weeklyAvailability={data?.settings?.weekly_availability as Record<string, Array<{ start: string; end: string }>> | null | undefined}
+          tutorTimezone={data?.settings?.tutor_timezone}
+        />
+
+        {/* Subjects & pricing */}
+        <SubjectsEditor subjects={data?.subjects ?? []} />
+
+
+
         {/* Customers */}
         <Card>
           <CardHeader>
