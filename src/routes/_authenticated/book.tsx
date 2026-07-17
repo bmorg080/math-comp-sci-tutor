@@ -243,6 +243,15 @@ function BookPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {account && (
+        <BuyLessonsDialog
+          open={buyOpen}
+          onOpenChange={setBuyOpen}
+          subjects={account.subjects}
+          defaultSubjectId={subjectId || undefined}
+        />
+      )}
     </div>
   );
 }
