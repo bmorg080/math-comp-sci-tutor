@@ -1,35 +1,35 @@
 ## Goal
-Let visitors browse available lesson time slots on the public landing page before creating an account. Booking still requires sign-in.
+
+Let a parent save an email address on each student profile. When that email is set, every lesson email (confirmation, 24h reminder, cancellation, reschedule) that currently goes to the parent also goes to the student's address.
+
+## Current state (verified)
+
+- `public.students` has `id, account_id, name, grade_level, notes` — no email column.
+- Lesson emails today have two recipients: the tutor, and the parent (the account owner's auth email). The "student" label in `lesson-emails.server.ts` / `booking.functions.ts` refers to that parent-side message.
+- Emails are sent from `src/lib/booking.functions.ts` (confirmation), `src/routes/api/public/hooks/lesson-reminders.ts` (reminder), and `src/lib/lesson-emails.server.ts` (cancel/reschedule). All three already load the student row via `students(name)` — we'll extend that projection.
 
 ## Changes
 
-**1. Public server function: `listPublicOpenSlots`**
-- New export in `src/lib/booking.functions.ts` (or a new `public-booking.functions.ts`), unauthenticated.
-- Same slot-generation logic as `listOpenSlots` (intersect tutor `weekly_availability` with existing `lessons`), but:
-  - Uses the server publishable client (narrow `TO anon` SELECT on `settings` + `lessons` time/status columns only — no student/subject/user data returned).
-  - Returns only UTC ISO start/end strings — no lesson IDs, no PII.
-- Add a `TO anon` SELECT policy on `lessons` restricted to non-cancelled rows, projecting only `starts_at`/`ends_at`/`status` via safe-column selection in the fetcher. (Or expose via a SQL function that returns just busy intervals.)
+### 1. Schema
+Migration adding a nullable `email text` column to `public.students`. Existing RLS/GRANTs already cover it (`st_own` policy scoped to `current_account_id()`).
 
-**2. Public route: `/availability`**
-- New `src/routes/availability.tsx` (public, SSR on, own `head()` metadata).
-- Loader primes TanStack Query with `listPublicOpenSlots` for the next ~4 weeks.
-- Renders the same date-grouped slot list as `/book`, converted to the visitor's local timezone.
-- Each slot is a **non-interactive card** with a "Sign up to book this time" CTA that links to `/auth?redirect=/book` (does not pre-reserve — the slot may be gone by the time they finish signing up, and `bookLesson` already re-checks conflicts).
-- Note above the list: "Times shown in your local timezone. Sign in to book."
+### 2. Manage student email in the UI
+On the customer dashboard, add a small **Students** card listing each student on the account with an inline "Edit email" action (dialog with name + email fields, email optional, basic email validation). Uses a new `updateStudent` server function with `requireSupabaseAuth`, scoped to the caller's account. If the account has no students yet, show an "Add student" button (already needed for booking anyway — currently students are created elsewhere; if none exist we surface an "Add student" form here too).
 
-**3. Landing page (`src/routes/index.tsx`)**
-- Add a "See available times" button in the hero / near the availability schedule, linking to `/availability`.
-- Keep the existing weekly-availability summary as-is.
+### 3. Include the student email on outbound lesson emails
+In all three send sites, extend the `students(...)` select to include `email`, and when the value is present pass it as an additional recipient on the parent-side send. Two options for the second recipient — I'll default to **A** unless you prefer B:
 
-**4. No changes to `/book`**
-- Still authenticated, still uses `listOpenSlots` + `bookLesson`.
+- **A. Send the parent-side email to both addresses in one send** (`to: [parentEmail, studentEmail]`). Simpler, one idempotency key, both see the same message with the Zoom link.
+- **B. Send a separate copy to the student** with its own idempotency key (`...-student-copy`). More log entries but lets suppression/unsubscribe apply independently per recipient.
 
-## Technical notes
-- Public fn projects only time columns; no `student_id`, `subject_id`, `account_id`, or notes leave the server. RLS `TO anon` policy is scoped accordingly.
-- Slots list is capped (e.g. next 28 days) to bound response size.
-- Public route loader uses `ensureQueryData`; component uses `useSuspenseQuery`. `errorComponent` + `notFoundComponent` included.
-- No new dependencies.
+No changes to the tutor email or to the email templates themselves — the Zoom link and time are already in the body.
+
+### 4. Admin visibility
+Show the student's email (when set) in the admin customer detail view alongside the parent's email, read-only.
 
 ## Out of scope
-- Holding/reserving a slot across the sign-up flow.
-- Showing tutor's actual booked lesson details (kept private).
+
+- Creating a separate login for the student. This is an email delivery change only; the student does not get an account or dashboard access.
+- Changing who the emails appear to be "from" or the template copy.
+
+Confirm option A vs B and I'll implement.
