@@ -84,7 +84,9 @@ function AdminPage() {
     tutor_name: "",
     tutor_email: "",
     tutor_bio: "",
+    tutor_timezone: "",
     cancellation_hours: 24,
+    credit_expiry_months: 9,
   });
 
   useEffect(() => {
@@ -95,7 +97,9 @@ function AdminPage() {
         tutor_name: s.tutor_name ?? "",
         tutor_email: s.tutor_email ?? "",
         tutor_bio: s.tutor_bio ?? "",
+        tutor_timezone: s.tutor_timezone ?? "",
         cancellation_hours: s.cancellation_hours ?? 24,
+        credit_expiry_months: s.credit_expiry_months ?? 9,
       });
     }
   }, [adminQ.data?.settings]);
