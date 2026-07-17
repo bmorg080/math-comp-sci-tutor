@@ -210,3 +210,47 @@ export const cancelLessonAsAdmin = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+export const rescheduleLessonAsAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { lessonId: string; startsAt: string }) =>
+    z
+      .object({
+        lessonId: z.string().uuid(),
+        startsAt: z.string().datetime(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+
+    const { data: lesson } = await supabase
+      .from("lessons")
+      .select("id, status, starts_at, duration_minutes")
+      .eq("id", data.lessonId)
+      .maybeSingle();
+    if (!lesson) throw new Error("Lesson not found");
+    if (lesson.status !== "scheduled") throw new Error("Only scheduled lessons can be rescheduled");
+
+    const newStart = new Date(data.startsAt);
+    if (isNaN(newStart.getTime())) throw new Error("Invalid start time");
+    if (newStart.getTime() < Date.now()) throw new Error("New time must be in the future");
+
+    // Check conflict (unique index on scheduled starts_at will also block, but give a nicer error)
+    const { data: conflict } = await supabase
+      .from("lessons")
+      .select("id")
+      .eq("status", "scheduled")
+      .eq("starts_at", newStart.toISOString())
+      .neq("id", lesson.id)
+      .maybeSingle();
+    if (conflict) throw new Error("Another scheduled lesson already occupies that time");
+
+    const { error } = await supabase
+      .from("lessons")
+      .update({ starts_at: newStart.toISOString(), reminder_sent_at: null })
+      .eq("id", lesson.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
