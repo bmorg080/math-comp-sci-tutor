@@ -37,7 +37,7 @@ export async function sendLessonUpdateEmails(opts: {
     const { data: lesson } = await supabaseAdmin
       .from("lessons")
       .select(
-        "id, account_id, student_id, subject_id, student:students(name), subject:subjects(name), account:accounts(id, display_name, timezone)",
+        "id, account_id, student_id, subject_id, student:students(name, email), subject:subjects(name), account:accounts(id, display_name, timezone)",
       )
       .eq("id", lessonId)
       .maybeSingle();
