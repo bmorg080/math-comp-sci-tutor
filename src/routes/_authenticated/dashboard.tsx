@@ -136,6 +136,10 @@ function Dashboard() {
             </div>
 
             <section className="mt-10">
+              <StudentsCard students={data.students} />
+            </section>
+
+            <section className="mt-10">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-semibold">Subjects &amp; pricing</h2>
                 <Button variant="outline" size="sm" onClick={() => setBuyOpen(true)}>
