@@ -1,14 +1,15 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Save, Video, UserPlus, X } from "lucide-react";
+import { ArrowLeft, Save, Video, UserPlus, X, Users, CalendarClock, Pencil } from "lucide-react";
 import {
   getAdminOverview,
   updateSettings,
   grantCredits,
   cancelLessonAsAdmin,
+  rescheduleLessonAsAdmin,
 } from "@/lib/admin.functions";
 import { getMyAccountOverview } from "@/lib/account.functions";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -32,12 +42,22 @@ export const Route = createFileRoute("/_authenticated/admin")({
   ),
 });
 
+type UpcomingLesson = {
+  id: string;
+  starts_at: string;
+  credit_id: string | null;
+  student: { name: string } | null;
+  subject: { name: string } | null;
+  account: { display_name: string } | null;
+};
+
 function AdminPage() {
   const fetchOverview = useServerFn(getMyAccountOverview);
   const fetchAdmin = useServerFn(getAdminOverview);
   const doUpdate = useServerFn(updateSettings);
   const doGrant = useServerFn(grantCredits);
   const doCancel = useServerFn(cancelLessonAsAdmin);
+  const doReschedule = useServerFn(rescheduleLessonAsAdmin);
   const navigate = useNavigate();
   const qc = useQueryClient();
 
@@ -102,10 +122,67 @@ function AdminPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Cancel dialog state (policy-aware refund)
+  const [cancelTarget, setCancelTarget] = useState<UpcomingLesson | null>(null);
+  const [cancelRefund, setCancelRefund] = useState(true);
+  const [cancelReason, setCancelReason] = useState("");
+
+  const cancellationHours = adminQ.data?.settings?.cancellation_hours ?? 24;
+  const cancelHoursUntil = cancelTarget
+    ? (new Date(cancelTarget.starts_at).getTime() - Date.now()) / 3_600_000
+    : 0;
+  const cancelWithinPolicy = cancelHoursUntil >= cancellationHours;
+
+  useEffect(() => {
+    if (cancelTarget) {
+      setCancelRefund(true); // admin default: always refund; policy is informational
+      setCancelReason("");
+    }
+  }, [cancelTarget]);
+
   const cancelMut = useMutation({
-    mutationFn: (lessonId: string) => doCancel({ data: { lessonId, refund: true } }),
+    mutationFn: () =>
+      doCancel({
+        data: {
+          lessonId: cancelTarget!.id,
+          refund: cancelRefund,
+          reason: cancelReason || undefined,
+        },
+      }),
     onSuccess: () => {
-      toast.success("Lesson cancelled and credit refunded.");
+      toast.success(cancelRefund ? "Lesson cancelled and credit refunded." : "Lesson cancelled (no refund).");
+      setCancelTarget(null);
+      qc.invalidateQueries({ queryKey: ["admin-overview"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Reschedule dialog
+  const [rescheduleTarget, setRescheduleTarget] = useState<UpcomingLesson | null>(null);
+  const [rescheduleLocal, setRescheduleLocal] = useState("");
+
+  useEffect(() => {
+    if (rescheduleTarget) {
+      // Convert UTC to local datetime-local format
+      const d = new Date(rescheduleTarget.starts_at);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      setRescheduleLocal(
+        `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`,
+      );
+    }
+  }, [rescheduleTarget]);
+
+  const rescheduleMut = useMutation({
+    mutationFn: () =>
+      doReschedule({
+        data: {
+          lessonId: rescheduleTarget!.id,
+          startsAt: new Date(rescheduleLocal).toISOString(),
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Lesson rescheduled.");
+      setRescheduleTarget(null);
       qc.invalidateQueries({ queryKey: ["admin-overview"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -119,6 +196,14 @@ function AdminPage() {
       hour: "numeric",
       minute: "2-digit",
     }).format(new Date(iso));
+
+  const [customerFilter, setCustomerFilter] = useState("");
+  const filteredAccounts = useMemo(() => {
+    const q = customerFilter.trim().toLowerCase();
+    const list = adminQ.data?.accounts ?? [];
+    if (!q) return list;
+    return list.filter((a) => a.display_name?.toLowerCase().includes(q));
+  }, [adminQ.data?.accounts, customerFilter]);
 
   if (!isAdmin) return <div className="p-8 text-sm text-muted-foreground">Checking access…</div>;
 
@@ -204,11 +289,67 @@ function AdminPage() {
           </CardContent>
         </Card>
 
+        {/* Customers */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-primary" /> Customers
+            </CardTitle>
+            <CardDescription>
+              {data ? `${data.accounts.length} total` : "Loading…"} · credit balance and lesson counts per family.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Input
+              placeholder="Search by name…"
+              value={customerFilter}
+              onChange={(e) => setCustomerFilter(e.target.value)}
+              className="max-w-sm"
+            />
+            {!data ? null : filteredAccounts.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No customers match.</p>
+            ) : (
+              <div className="overflow-hidden rounded-md border border-border/50">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2">Family</th>
+                      <th className="px-3 py-2">Timezone</th>
+                      <th className="px-3 py-2 text-right">Credits</th>
+                      <th className="px-3 py-2 text-right">Upcoming</th>
+                      <th className="px-3 py-2 text-right">Completed</th>
+                      <th className="px-3 py-2 text-right">Cancelled</th>
+                      <th className="px-3 py-2">Joined</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {filteredAccounts.map((a) => (
+                      <tr key={a.id} className="hover:bg-muted/20">
+                        <td className="px-3 py-2 font-medium">{a.display_name}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{a.timezone}</td>
+                        <td className="px-3 py-2 text-right">{a.credits}</td>
+                        <td className="px-3 py-2 text-right">{a.lessons.upcoming}</td>
+                        <td className="px-3 py-2 text-right">{a.lessons.completed}</td>
+                        <td className="px-3 py-2 text-right">{a.lessons.cancelled}</td>
+                        <td className="px-3 py-2 text-muted-foreground">
+                          {new Date(a.created_at).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Upcoming lessons */}
         <Card>
           <CardHeader>
-            <CardTitle>Upcoming lessons</CardTitle>
-            <CardDescription>All scheduled lessons across every student.</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <CalendarClock className="h-4 w-4 text-primary" /> Upcoming lessons
+            </CardTitle>
+            <CardDescription>Reschedule or cancel any scheduled lesson.</CardDescription>
           </CardHeader>
           <CardContent>
             {!data ? (
@@ -217,27 +358,50 @@ function AdminPage() {
               <p className="text-sm text-muted-foreground">No upcoming lessons.</p>
             ) : (
               <div className="space-y-2">
-                {data.upcoming.map((l) => (
-                  <div
-                    key={l.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border/50 px-4 py-3 text-sm"
-                  >
-                    <div>
-                      <div className="font-medium">{fmt(l.starts_at)}</div>
-                      <div className="text-muted-foreground">
-                        {l.subject?.name} · {l.student?.name} · {l.account?.display_name}
+                {data.upcoming.map((l) => {
+                  const hoursUntil = (new Date(l.starts_at).getTime() - Date.now()) / 3_600_000;
+                  const withinPolicy = hoursUntil >= cancellationHours;
+                  return (
+                    <div
+                      key={l.id}
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border/50 px-4 py-3 text-sm"
+                    >
+                      <div>
+                        <div className="font-medium">{fmt(l.starts_at)}</div>
+                        <div className="text-muted-foreground">
+                          {l.subject?.name} · {l.student?.name} · {l.account?.display_name}
+                        </div>
+                        <div className="mt-0.5 text-xs">
+                          {withinPolicy ? (
+                            <span className="text-muted-foreground">
+                              {Math.round(hoursUntil)}h away · within {cancellationHours}h policy
+                            </span>
+                          ) : (
+                            <span className="text-amber-600 dark:text-amber-400">
+                              {Math.round(hoursUntil)}h away · late cancel (policy: {cancellationHours}h)
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setRescheduleTarget(l as UpcomingLesson)}
+                        >
+                          <Pencil className="mr-1 h-4 w-4" /> Reschedule
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setCancelTarget(l as UpcomingLesson)}
+                        >
+                          <X className="mr-1 h-4 w-4" /> Cancel
+                        </Button>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => cancelMut.mutate(l.id)}
-                      disabled={cancelMut.isPending}
-                    >
-                      <X className="mr-1 h-4 w-4" /> Cancel + refund
-                    </Button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>
@@ -297,6 +461,7 @@ function AdminPage() {
         <Card>
           <CardHeader>
             <CardTitle>Recent history</CardTitle>
+            <CardDescription>Last 50 past lessons across all customers.</CardDescription>
           </CardHeader>
           <CardContent>
             {(data?.recent ?? []).length === 0 ? (
@@ -306,7 +471,7 @@ function AdminPage() {
                 {data!.recent.map((l) => (
                   <div key={l.id} className="flex items-center justify-between rounded-md bg-card/50 px-3 py-2 text-sm">
                     <span>
-                      {fmt(l.starts_at)} · {l.subject?.name} · {l.student?.name}
+                      {fmt(l.starts_at)} · {l.subject?.name} · {l.student?.name} · {l.account?.display_name}
                     </span>
                     <Badge variant={l.status === "completed" ? "default" : "secondary"}>
                       {l.status}
@@ -318,6 +483,112 @@ function AdminPage() {
           </CardContent>
         </Card>
       </main>
+
+      {/* Cancel dialog */}
+      <Dialog open={!!cancelTarget} onOpenChange={(o) => !o && setCancelTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel lesson</DialogTitle>
+            <DialogDescription>
+              {cancelTarget && (
+                <>
+                  {fmt(cancelTarget.starts_at)} · {cancelTarget.subject?.name} ·{" "}
+                  {cancelTarget.student?.name}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <div
+              className={`rounded-md border px-3 py-2 ${
+                cancelWithinPolicy
+                  ? "border-border/50 text-muted-foreground"
+                  : "border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-amber-300"
+              }`}
+            >
+              {cancelWithinPolicy
+                ? `Within the ${cancellationHours}h policy — refund is standard.`
+                : `Outside the ${cancellationHours}h policy (${Math.max(
+                    0,
+                    Math.round(cancelHoursUntil),
+                  )}h away). Student would normally NOT be refunded.`}
+            </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="refund"
+                checked={cancelRefund}
+                onCheckedChange={(v) => setCancelRefund(v === true)}
+              />
+              <Label htmlFor="refund" className="cursor-pointer">
+                Refund credit to student
+              </Label>
+            </div>
+            <div>
+              <Label htmlFor="reason">Reason (optional, shared internally)</Label>
+              <Textarea
+                id="reason"
+                rows={2}
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCancelTarget(null)}>
+              Never mind
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => cancelMut.mutate()}
+              disabled={cancelMut.isPending}
+            >
+              {cancelMut.isPending ? "Cancelling…" : "Cancel lesson"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reschedule dialog */}
+      <Dialog open={!!rescheduleTarget} onOpenChange={(o) => !o && setRescheduleTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reschedule lesson</DialogTitle>
+            <DialogDescription>
+              {rescheduleTarget && (
+                <>
+                  Currently {fmt(rescheduleTarget.starts_at)} · {rescheduleTarget.subject?.name} ·{" "}
+                  {rescheduleTarget.student?.name}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <div>
+              <Label htmlFor="newtime">New date &amp; time (your local timezone)</Label>
+              <Input
+                id="newtime"
+                type="datetime-local"
+                value={rescheduleLocal}
+                onChange={(e) => setRescheduleLocal(e.target.value)}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Credit stays with the lesson; both parties will receive an updated notification if configured.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRescheduleTarget(null)}>
+              Never mind
+            </Button>
+            <Button
+              onClick={() => rescheduleMut.mutate()}
+              disabled={!rescheduleLocal || rescheduleMut.isPending}
+            >
+              {rescheduleMut.isPending ? "Saving…" : "Save new time"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
