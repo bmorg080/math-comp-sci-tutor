@@ -1,75 +1,35 @@
+## Goal
+Let visitors browse available lesson time slots on the public landing page before creating an account. Booking still requires sign-in.
 
-# Tutoring Booking App — Build Plan
+## Changes
 
-A full-stack booking site for your tutoring business. Students/parents sign up, pick a subject, buy single lessons or 5-packs, and book open time slots. You get an admin dashboard to manage everything.
+**1. Public server function: `listPublicOpenSlots`**
+- New export in `src/lib/booking.functions.ts` (or a new `public-booking.functions.ts`), unauthenticated.
+- Same slot-generation logic as `listOpenSlots` (intersect tutor `weekly_availability` with existing `lessons`), but:
+  - Uses the server publishable client (narrow `TO anon` SELECT on `settings` + `lessons` time/status columns only — no student/subject/user data returned).
+  - Returns only UTC ISO start/end strings — no lesson IDs, no PII.
+- Add a `TO anon` SELECT policy on `lessons` restricted to non-cancelled rows, projecting only `starts_at`/`ends_at`/`status` via safe-column selection in the fetcher. (Or expose via a SQL function that returns just busy intervals.)
 
-## Scope of v1
+**2. Public route: `/availability`**
+- New `src/routes/availability.tsx` (public, SSR on, own `head()` metadata).
+- Loader primes TanStack Query with `listPublicOpenSlots` for the next ~4 weeks.
+- Renders the same date-grouped slot list as `/book`, converted to the visitor's local timezone.
+- Each slot is a **non-interactive card** with a "Sign up to book this time" CTA that links to `/auth?redirect=/book` (does not pre-reserve — the slot may be gone by the time they finish signing up, and `bookLesson` already re-checks conflicts).
+- Note above the list: "Times shown in your local timezone. Sign in to book."
 
-**Public site**
-- Landing page: your bio ("high school CS teacher and math tutor…"), subject/price table, "Sign up / Log in" CTAs.
+**3. Landing page (`src/routes/index.tsx`)**
+- Add a "See available times" button in the hero / near the availability schedule, linking to `/availability`.
+- Keep the existing weekly-availability summary as-is.
 
-**Customer area (after login)**
-- Subjects & pricing table (shows any custom pricing that applies to their account, clearly labeled).
-- Buy: single lesson or 5-pack (10% off) — Stripe checkout.
-- Calendar view of open 1-hour slots in the customer's timezone. Availability: Mon–Thu 4–8pm, Sun 6–8pm (your local time).
-- Book a slot → uses a credit if available, otherwise prompts checkout for that subject's single-lesson price.
-- Lesson history: past + upcoming lessons, with cancel button (24h+ = free refund/credit; <24h = forfeit).
-- Account: add/edit students (siblings), optional student email, timezone.
+**4. No changes to `/book`**
+- Still authenticated, still uses `listOpenSlots` + `bookLesson`.
 
-**Admin area (your login, gated by admin role)**
-- Customer list + drill-in to view profile, students, lesson history, credit balance.
-- Lesson manager: create/cancel any lesson (admin cancel auto-refunds/credits).
-- Subject & price editor; per-customer custom prices.
-- Refunds: refund a paid lesson or unused credits on request.
+## Technical notes
+- Public fn projects only time columns; no `student_id`, `subject_id`, `account_id`, or notes leave the server. RLS `TO anon` policy is scoped accordingly.
+- Slots list is capped (e.g. next 28 days) to bound response size.
+- Public route loader uses `ensureQueryData`; component uses `useSuspenseQuery`. `errorComponent` + `notFoundComponent` included.
+- No new dependencies.
 
-**Automation**
-- On booking: both parties emailed lesson time + your static Zoom link.
-- 24h before lesson: reminder email to both parties (cron job).
-
-## Key decisions locked in
-
-- **Auth**: email/password. One account per family; parent email required, optional student email attached as a second login on the same account. Timezone captured at signup.
-- **Payments**: Stripe (Lovable-managed, seamless). Handles tax/compliance automatically for eligible sales.
-- **Zoom**: single static link stored in admin settings; reused for every lesson.
-- **Credits**: 9-month expiry from purchase date, shared across students on the account.
-- **Refund policy**: enforced in code — customer cancel ≥24h returns credit; <24h forfeits; admin cancel always refunds.
-- **Emails**: Lovable Emails (branded confirmation + reminder templates).
-
-## Technical section
-
-**Stack**: TanStack Start + Lovable Cloud (Postgres + Auth), Stripe payments, Lovable Emails, pg_cron for reminders.
-
-**Data model** (Lovable Cloud tables, all RLS-protected):
-- `accounts` (family unit; timezone, custom_price_multiplier or ref to custom prices)
-- `account_members` (auth.users ↔ accounts, role: parent/student)
-- `user_roles` (separate table, app_role enum: admin/customer)
-- `students` (name, account_id, notes)
-- `subjects` (name, base_price_cents, active)
-- `custom_prices` (account_id, subject_id, price_cents)
-- `credits` (account_id, remaining, purchased_at, expires_at, source: purchase/admin/refund)
-- `lessons` (account_id, student_id, subject_id, starts_at, duration=60, status: scheduled/completed/cancelled/no_show, credit_id, stripe_payment_id, cancelled_by, cancelled_at)
-- `settings` (singleton: zoom_link, availability rules)
-- `email_log` (for idempotency)
-
-**Server functions**: `listOpenSlots`, `bookLesson`, `cancelLesson`, `purchasePackage`, `purchaseSingleLesson`, admin variants for CRUD. Stripe checkout via managed integration; webhook credits the account on successful payment.
-
-**Cron**: pg_cron job hits `/api/public/cron/send-reminders` hourly with a shared secret; sends reminder emails for lessons 24–25h out.
-
-**Availability logic**: generate slots from weekly rule, subtract booked lessons, convert to viewer's timezone client-side.
-
-## Build order
-
-1. Enable Lovable Cloud + email domain setup dialog.
-2. Enable Stripe payments.
-3. Schema + RLS + seed subjects/prices/availability/your admin role.
-4. Auth (signup with timezone + parent/optional student email, login).
-5. Landing page with your bio.
-6. Customer dashboard: subjects table, purchase flow (Stripe), lesson history.
-7. Calendar + booking flow with credit-or-pay logic.
-8. Admin dashboard.
-9. Email templates + booking confirmation trigger.
-10. Reminder cron.
-
-## Confirm before I start
-
-This is a big build. I'll deliver it in stages, showing progress after each. The full v1 will span several messages. Sound good?
+## Out of scope
+- Holding/reserving a slot across the sign-up flow.
+- Showing tutor's actual booked lesson details (kept private).

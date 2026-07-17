@@ -59,16 +59,17 @@ function Landing() {
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild size="lg">
+                <Link to="/availability">See available times</Link>
+              </Button>
+              <Button asChild variant="outline" size="lg">
                 <Link to="/auth" search={{ redirect: "/dashboard" }}>
                   Create an account
                 </Link>
               </Button>
-              <Button asChild variant="outline" size="lg">
-                <a href="#subjects">See subjects &amp; pricing</a>
-              </Button>
             </div>
           </div>
         </section>
+
 
         {/* Subjects */}
         <section id="subjects" className="mx-auto max-w-6xl px-6 py-12">
@@ -111,8 +112,12 @@ function Landing() {
                   <h3 className="text-xl font-semibold">Weekly availability</h3>
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Times shown in {settings.tutor_timezone.replace("_", " ")}. You'll see slots in your own timezone once you sign in.
+                  Times shown in {settings.tutor_timezone.replace("_", " ")}.{" "}
+                  <Link to="/availability" className="text-primary underline underline-offset-2">
+                    Browse open slots in your timezone →
+                  </Link>
                 </p>
+
               </div>
               <ul className="space-y-2 text-sm">
                 {(settings.weekly_availability ?? [])
