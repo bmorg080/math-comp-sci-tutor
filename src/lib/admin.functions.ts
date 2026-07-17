@@ -285,3 +285,82 @@ export const rescheduleLessonAsAdmin = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+export const updateSubject = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: {
+    id: string;
+    name?: string;
+    price_cents?: number;
+    active?: boolean;
+    description?: string;
+    sort_order?: number;
+  }) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        name: z.string().trim().min(1).max(120).optional(),
+        price_cents: z.number().int().min(0).max(1_000_000).optional(),
+        active: z.boolean().optional(),
+        description: z.string().max(1000).optional(),
+        sort_order: z.number().int().min(0).max(9999).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+
+    const patch: {
+      name?: string;
+      price_cents?: number;
+      active?: boolean;
+      description?: string;
+      sort_order?: number;
+    } = {};
+    if (data.name !== undefined) patch.name = data.name;
+    if (data.price_cents !== undefined) patch.price_cents = data.price_cents;
+    if (data.active !== undefined) patch.active = data.active;
+    if (data.description !== undefined) patch.description = data.description;
+    if (data.sort_order !== undefined) patch.sort_order = data.sort_order;
+
+    const { error } = await supabase.from("subjects").update(patch).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+const availabilitySchema = z.record(
+  z.string().regex(/^[0-6]$/), // 0=Sun ... 6=Sat
+  z.array(
+    z.object({
+      start: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:MM"),
+      end: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:MM"),
+    }),
+  ),
+);
+
+export const updateAvailability = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { weekly_availability: Record<string, Array<{ start: string; end: string }>> }) =>
+    z.object({ weekly_availability: availabilitySchema }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+
+    // Validate each range: end > start
+    for (const [day, ranges] of Object.entries(data.weekly_availability)) {
+      for (const r of ranges) {
+        if (r.end <= r.start) {
+          throw new Error(`Day ${day}: end time must be after start time`);
+        }
+      }
+    }
+
+    const { error } = await supabase
+      .from("settings")
+      .update({ weekly_availability: data.weekly_availability })
+      .eq("id", 1);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });

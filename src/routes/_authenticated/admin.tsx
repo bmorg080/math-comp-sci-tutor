@@ -11,6 +11,8 @@ import {
   cancelLessonAsAdmin,
   rescheduleLessonAsAdmin,
 } from "@/lib/admin.functions";
+import { SubjectsEditor } from "@/components/admin/SubjectsEditor";
+import { AvailabilityEditor } from "@/components/admin/AvailabilityEditor";
 import { getMyAccountOverview } from "@/lib/account.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -288,6 +290,17 @@ function AdminPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Weekly availability editor */}
+        <AvailabilityEditor
+          weeklyAvailability={data?.settings?.weekly_availability as Record<string, Array<{ start: string; end: string }>> | null | undefined}
+          tutorTimezone={data?.settings?.tutor_timezone}
+        />
+
+        {/* Subjects & pricing */}
+        <SubjectsEditor subjects={data?.subjects ?? []} />
+
+
 
         {/* Customers */}
         <Card>
