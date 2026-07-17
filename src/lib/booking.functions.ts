@@ -183,5 +183,79 @@ export const bookLesson = createServerFn({ method: "POST" })
       .update({ consumed_lesson_id: lesson.id })
       .eq("id", credit.id);
 
+    // Send confirmation emails (best-effort, don't fail booking on email errors)
+    try {
+      const { sendTemplateEmail } = await import("@/lib/email-templates/send-email");
+      const [{ data: settings }, { data: studentRow }, { data: subjectRow }, { data: authUser }] =
+        await Promise.all([
+          supabase
+            .from("settings")
+            .select("zoom_link, tutor_name, tutor_email, tutor_timezone")
+            .eq("id", 1)
+            .maybeSingle(),
+          supabase.from("students").select("name").eq("id", data.studentId).maybeSingle(),
+          supabase.from("subjects").select("name").eq("id", data.subjectId).maybeSingle(),
+          supabase.auth.getUser(),
+        ]);
+
+      const studentName = studentRow?.name ?? "Student";
+      const subjectName = subjectRow?.name ?? "Lesson";
+      const zoomLink = settings?.zoom_link ?? "";
+      const tutorTZ = settings?.tutor_timezone ?? "UTC";
+      const tutorEmail = settings?.tutor_email;
+      const tutorName = settings?.tutor_name ?? "Tutor";
+      const parentEmail = authUser?.user?.email;
+      const parentName =
+        (authUser?.user?.user_metadata as { full_name?: string } | undefined)?.full_name ??
+        "there";
+
+      const fmt = (tz: string) =>
+        new Intl.DateTimeFormat("en-US", {
+          timeZone: tz,
+          weekday: "long",
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit",
+          timeZoneName: "short",
+        }).format(new Date(startsAt));
+
+      // Send to customer
+      if (parentEmail) {
+        await sendTemplateEmail("lesson-confirmation", parentEmail, {
+          idempotencyKey: `lesson-confirm-student-${lesson.id}`,
+          templateData: {
+            recipientName: parentName,
+            studentName,
+            subjectName,
+            whenForRecipient: fmt(
+              Intl.DateTimeFormat().resolvedOptions().timeZone || tutorTZ,
+            ),
+            whenForOther: fmt(tutorTZ),
+            otherLabel: "Tutor's time",
+            zoomLink,
+            isTutor: false,
+          },
+        }).catch((e) => console.error("[booking] student email failed:", e));
+      }
+
+      // Send to tutor
+      if (tutorEmail) {
+        await sendTemplateEmail("lesson-confirmation", tutorEmail, {
+          idempotencyKey: `lesson-confirm-tutor-${lesson.id}`,
+          templateData: {
+            recipientName: tutorName,
+            studentName,
+            subjectName,
+            whenForRecipient: fmt(tutorTZ),
+            zoomLink,
+            isTutor: true,
+          },
+        }).catch((e) => console.error("[booking] tutor email failed:", e));
+      }
+    } catch (e) {
+      console.error("[booking] email dispatch error:", e);
+    }
+
     return { ok: true as const, lessonId: lesson.id };
   });
