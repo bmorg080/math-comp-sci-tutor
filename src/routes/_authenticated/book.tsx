@@ -8,6 +8,7 @@ import { listOpenSlots, bookLesson } from "@/lib/booking.functions";
 import { getMyAccountOverview } from "@/lib/account.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BuyLessonsDialog } from "@/components/BuyLessonsDialog";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -42,6 +43,7 @@ function BookPage() {
   const [studentId, setStudentId] = useState<string>("");
   const [subjectId, setSubjectId] = useState<string>("");
   const [pendingSlot, setPendingSlot] = useState<string | null>(null);
+  const [buyOpen, setBuyOpen] = useState(false);
 
   const viewerTZ = useMemo(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
@@ -69,9 +71,10 @@ function BookPage() {
     onSuccess: (res) => {
       if (!res.ok) {
         toast.error(
-          `No credits available. This lesson would cost $${(res.priceCents / 100).toFixed(2)}. Purchase a lesson or bundle first.`,
+          `No credits available. This lesson costs $${(res.priceCents / 100).toFixed(2)}. Buy credits to continue.`,
         );
         setPendingSlot(null);
+        setBuyOpen(true);
         return;
       }
       toast.success("Lesson booked! Confirmation email coming shortly.");
@@ -240,6 +243,15 @@ function BookPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {account && (
+        <BuyLessonsDialog
+          open={buyOpen}
+          onOpenChange={setBuyOpen}
+          subjects={account.subjects}
+          defaultSubjectId={subjectId || undefined}
+        />
+      )}
     </div>
   );
 }

@@ -55,6 +55,7 @@ export type Database = {
           display_name: string
           id: string
           notes: string | null
+          stripe_customer_id: string | null
           timezone: string
           updated_at: string
         }
@@ -63,6 +64,7 @@ export type Database = {
           display_name: string
           id?: string
           notes?: string | null
+          stripe_customer_id?: string | null
           timezone?: string
           updated_at?: string
         }
@@ -71,6 +73,7 @@ export type Database = {
           display_name?: string
           id?: string
           notes?: string | null
+          stripe_customer_id?: string | null
           timezone?: string
           updated_at?: string
         }
@@ -372,6 +375,7 @@ export type Database = {
           name: string
           price_cents: number
           sort_order: number
+          stripe_product_slug: string | null
         }
         Insert: {
           active?: boolean
@@ -381,6 +385,7 @@ export type Database = {
           name: string
           price_cents: number
           sort_order?: number
+          stripe_product_slug?: string | null
         }
         Update: {
           active?: boolean
@@ -390,6 +395,7 @@ export type Database = {
           name?: string
           price_cents?: number
           sort_order?: number
+          stripe_product_slug?: string | null
         }
         Relationships: []
       }

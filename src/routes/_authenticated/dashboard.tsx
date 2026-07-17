@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CalendarDays, Coins, LogOut, ShieldCheck, Users, BookOpen } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { BuyLessonsDialog } from "@/components/BuyLessonsDialog";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -22,6 +23,22 @@ function Dashboard() {
   const provisionAccount = useServerFn(ensureMyAccount);
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const [buyOpen, setBuyOpen] = useState(false);
+
+  // Refresh on return from Stripe checkout
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("purchase") === "success") {
+      toast.success("Payment received! Credits will appear shortly.");
+      url.searchParams.delete("purchase");
+      window.history.replaceState({}, "", url.toString());
+      // Poll a couple of times for webhook-created credits
+      const tries = [1000, 3000, 6000];
+      tries.forEach((ms) =>
+        setTimeout(() => qc.invalidateQueries({ queryKey: ["account-overview"] }), ms),
+      );
+    }
+  }, [qc]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["account-overview"],
@@ -100,19 +117,22 @@ function Dashboard() {
               <StatCard icon={<CalendarDays className="h-5 w-5" />} label="Upcoming lessons" value="0" />
             </div>
 
-            <div className="mt-6">
+            <div className="mt-6 flex flex-wrap gap-3">
               <Button asChild size="lg">
                 <Link to="/book">
                   <CalendarDays className="h-4 w-4" /> Book a lesson
                 </Link>
+              </Button>
+              <Button size="lg" variant="outline" onClick={() => setBuyOpen(true)}>
+                <BookOpen className="h-4 w-4" /> Buy credits
               </Button>
             </div>
 
             <section className="mt-10">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-semibold">Subjects &amp; pricing</h2>
-                <Button disabled variant="outline" size="sm" title="Coming next">
-                  <BookOpen className="h-4 w-4" /> Buy a lesson
+                <Button variant="outline" size="sm" onClick={() => setBuyOpen(true)}>
+                  <BookOpen className="h-4 w-4" /> Buy credits
                 </Button>
               </div>
               <Card>
@@ -149,15 +169,17 @@ function Dashboard() {
               </Card>
             </section>
 
-            <section className="mt-10">
-              <h2 className="mb-4 text-xl font-semibold">Coming soon</h2>
-              <Card className="p-6 text-sm text-muted-foreground">
-                Lesson booking calendar, purchase flow, and lesson history are being wired up next.
-              </Card>
-            </section>
           </>
         )}
       </main>
+
+      {data?.account && (
+        <BuyLessonsDialog
+          open={buyOpen}
+          onOpenChange={setBuyOpen}
+          subjects={data.subjects}
+        />
+      )}
     </div>
   );
 }
