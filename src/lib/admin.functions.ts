@@ -188,11 +188,13 @@ export const cancelLessonAsAdmin = createServerFn({ method: "POST" })
 
     const { data: lesson } = await supabase
       .from("lessons")
-      .select("id, credit_id, status")
+      .select("id, credit_id, status, starts_at")
       .eq("id", data.lessonId)
       .maybeSingle();
     if (!lesson) throw new Error("Lesson not found");
     if (lesson.status !== "scheduled") throw new Error("Lesson is not scheduled");
+
+    const hoursUntil = (new Date(lesson.starts_at).getTime() - Date.now()) / (1000 * 60 * 60);
 
     const { error } = await supabase
       .from("lessons")
@@ -207,6 +209,21 @@ export const cancelLessonAsAdmin = createServerFn({ method: "POST" })
 
     if (data.refund && lesson.credit_id) {
       await supabase.from("credits").update({ consumed_lesson_id: null }).eq("id", lesson.credit_id);
+    }
+
+    try {
+      const { sendLessonUpdateEmails } = await import("@/lib/lesson-emails.server");
+      await sendLessonUpdateEmails({
+        supabaseAdmin: supabase as any,
+        lessonId: lesson.id,
+        kind: "cancelled",
+        startsAtISO: lesson.starts_at,
+        refunded: !!data.refund,
+        lateCancel: hoursUntil < 24,
+        reason: data.reason,
+      });
+    } catch (e) {
+      console.error("[cancelLessonAsAdmin] email dispatch error:", e);
     }
     return { ok: true };
   });
@@ -247,10 +264,24 @@ export const rescheduleLessonAsAdmin = createServerFn({ method: "POST" })
       .maybeSingle();
     if (conflict) throw new Error("Another scheduled lesson already occupies that time");
 
+    const previousStartsAtISO = lesson.starts_at;
     const { error } = await supabase
       .from("lessons")
       .update({ starts_at: newStart.toISOString(), reminder_sent_at: null })
       .eq("id", lesson.id);
     if (error) throw new Error(error.message);
+
+    try {
+      const { sendLessonUpdateEmails } = await import("@/lib/lesson-emails.server");
+      await sendLessonUpdateEmails({
+        supabaseAdmin: supabase as any,
+        lessonId: lesson.id,
+        kind: "rescheduled",
+        startsAtISO: newStart.toISOString(),
+        previousStartsAtISO,
+      });
+    } catch (e) {
+      console.error("[rescheduleLessonAsAdmin] email dispatch error:", e);
+    }
     return { ok: true };
   });
