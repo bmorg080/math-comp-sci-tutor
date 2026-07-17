@@ -158,6 +158,20 @@ export function StudentsCard({ students }: { students: Student[] }) {
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 maxLength={255}
               />
+              {editing && form.email && (
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, email: "" })}
+                  className="justify-self-start text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                >
+                  Remove email
+                </button>
+              )}
+              {editing && !form.email && editing.email && (
+                <p className="text-xs text-muted-foreground">
+                  Email will be removed when you save. Lesson emails will go to you only.
+                </p>
+              )}
             </div>
             <div className="grid gap-1.5">
               <Label htmlFor="student-grade">Grade level (optional)</Label>
