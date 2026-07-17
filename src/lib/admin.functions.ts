@@ -311,7 +311,13 @@ export const updateSubject = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
 
-    const patch: Record<string, unknown> = {};
+    const patch: {
+      name?: string;
+      price_cents?: number;
+      active?: boolean;
+      description?: string;
+      sort_order?: number;
+    } = {};
     if (data.name !== undefined) patch.name = data.name;
     if (data.price_cents !== undefined) patch.price_cents = data.price_cents;
     if (data.active !== undefined) patch.active = data.active;
