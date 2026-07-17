@@ -50,7 +50,7 @@ async function handleCheckoutCompleted(session: any) {
     note: subjectName ? `Purchased: ${subjectName}` : null,
   }));
 
-  const { error } = await supabase.from("credits").insert(rows);
+  const { error } = await (supabase.from("credits") as any).insert(rows);
   if (error) {
     console.error("Failed to insert credits", error);
     throw error;
