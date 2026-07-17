@@ -3,11 +3,20 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Video, X, Calendar, Clock, ExternalLink } from "lucide-react";
-import { listMyLessons, cancelMyLesson } from "@/lib/lessons.functions";
+import { ArrowLeft, Video, X, Calendar, Clock, ExternalLink, CalendarClock } from "lucide-react";
+import { listMyLessons, cancelMyLesson, rescheduleMyLesson } from "@/lib/lessons.functions";
+import { listOpenSlots } from "@/lib/booking.functions";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
