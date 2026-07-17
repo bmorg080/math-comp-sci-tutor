@@ -231,9 +231,7 @@ export const bookLesson = createServerFn({ method: "POST" })
             recipientName: parentName,
             studentName,
             subjectName,
-            whenForRecipient: fmt(
-              Intl.DateTimeFormat().resolvedOptions().timeZone || tutorTZ,
-            ),
+            whenForRecipient: fmt(customerTZ),
             whenForOther: fmt(tutorTZ),
             otherLabel: "Tutor's time",
             zoomLink,
