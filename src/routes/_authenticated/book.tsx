@@ -43,6 +43,7 @@ function BookPage() {
   const [studentId, setStudentId] = useState<string>("");
   const [subjectId, setSubjectId] = useState<string>("");
   const [pendingSlot, setPendingSlot] = useState<string | null>(null);
+  const [buyOpen, setBuyOpen] = useState(false);
 
   const viewerTZ = useMemo(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
