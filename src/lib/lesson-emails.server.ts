@@ -52,9 +52,8 @@ export async function sendLessonUpdateEmails(opts: {
     // Find the primary account member (parent) email
     const { data: member } = await supabaseAdmin
       .from("account_members")
-      .select("email, user_id")
+      .select("email")
       .eq("account_id", lesson.account_id)
-      .order("created_at", { ascending: true })
       .limit(1)
       .maybeSingle();
 
