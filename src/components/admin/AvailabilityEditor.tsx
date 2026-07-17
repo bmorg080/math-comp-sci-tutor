@@ -25,7 +25,7 @@ export function AvailabilityEditor({
   weeklyAvailability,
   tutorTimezone,
 }: {
-  weeklyAvailability: Availability | null | undefined;
+  weeklyAvailability: unknown;
   tutorTimezone: string | null | undefined;
 }) {
   const qc = useQueryClient();
@@ -34,7 +34,28 @@ export function AvailabilityEditor({
 
   useEffect(() => {
     const seed: Availability = {};
-    for (const d of DAYS) seed[d.key] = (weeklyAvailability?.[d.key] ?? []) as Range[];
+    for (const d of DAYS) seed[d.key] = [];
+    const raw = weeklyAvailability;
+    if (Array.isArray(raw)) {
+      // Legacy shape: [{ day: 0-6, start, end }, ...]
+      for (const item of raw as Array<{ day: number | string; start: string; end: string }>) {
+        const key = String(item?.day);
+        if (seed[key]) seed[key].push({ start: item.start, end: item.end });
+      }
+    } else if (raw && typeof raw === "object") {
+      const obj = raw as Record<string, unknown>;
+      for (const d of DAYS) {
+        const v = obj[d.key];
+        if (Array.isArray(v)) {
+          seed[d.key] = v.filter(
+            (r): r is Range =>
+              !!r && typeof r === "object" &&
+              typeof (r as Range).start === "string" &&
+              typeof (r as Range).end === "string",
+          );
+        }
+      }
+    }
     setAvail(seed);
   }, [weeklyAvailability]);
 

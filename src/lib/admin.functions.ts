@@ -348,18 +348,21 @@ export const updateAvailability = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
 
-    // Validate each range: end > start
+    // Validate each range: end > start, then flatten to the array shape the
+    // booking functions consume: [{ day, start, end }, ...].
+    const flat: Array<{ day: number; start: string; end: string }> = [];
     for (const [day, ranges] of Object.entries(data.weekly_availability)) {
       for (const r of ranges) {
         if (r.end <= r.start) {
           throw new Error(`Day ${day}: end time must be after start time`);
         }
+        flat.push({ day: Number(day), start: r.start, end: r.end });
       }
     }
 
     const { error } = await supabase
       .from("settings")
-      .update({ weekly_availability: data.weekly_availability })
+      .update({ weekly_availability: flat })
       .eq("id", 1);
     if (error) throw new Error(error.message);
     return { ok: true };
