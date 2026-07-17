@@ -3,11 +3,20 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, Video, X, Calendar, Clock, ExternalLink } from "lucide-react";
-import { listMyLessons, cancelMyLesson } from "@/lib/lessons.functions";
+import { ArrowLeft, Video, X, Calendar, Clock, ExternalLink, CalendarClock } from "lucide-react";
+import { listMyLessons, cancelMyLesson, rescheduleMyLesson } from "@/lib/lessons.functions";
+import { listOpenSlots } from "@/lib/booking.functions";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,8 +38,11 @@ export const Route = createFileRoute("/_authenticated/lessons")({
 function LessonsPage() {
   const fetchLessons = useServerFn(listMyLessons);
   const doCancel = useServerFn(cancelMyLesson);
+  const doReschedule = useServerFn(rescheduleMyLesson);
+  const fetchSlots = useServerFn(listOpenSlots);
   const qc = useQueryClient();
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [rescheduleId, setRescheduleId] = useState<string | null>(null);
 
   const viewerTZ = useMemo(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
@@ -38,6 +50,11 @@ function LessonsPage() {
   );
 
   const q = useQuery({ queryKey: ["my-lessons"], queryFn: () => fetchLessons() });
+  const slotsQ = useQuery({
+    queryKey: ["open-slots"],
+    queryFn: () => fetchSlots({ data: { days: 21 } }),
+    enabled: !!rescheduleId,
+  });
 
   const cancelMut = useMutation({
     mutationFn: (lessonId: string) => doCancel({ data: { lessonId } }),
@@ -48,6 +65,18 @@ function LessonsPage() {
       setConfirmId(null);
       qc.invalidateQueries({ queryKey: ["my-lessons"] });
       qc.invalidateQueries({ queryKey: ["account-overview"] });
+      qc.invalidateQueries({ queryKey: ["open-slots"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const rescheduleMut = useMutation({
+    mutationFn: (v: { lessonId: string; startsAtISO: string }) =>
+      doReschedule({ data: v }),
+    onSuccess: () => {
+      toast.success("Lesson rescheduled — confirmation email sent.");
+      setRescheduleId(null);
+      qc.invalidateQueries({ queryKey: ["my-lessons"] });
       qc.invalidateQueries({ queryKey: ["open-slots"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -129,6 +158,11 @@ function LessonsPage() {
                           </a>
                         </Button>
                       ) : null}
+                      {(new Date(l.starts_at).getTime() - Date.now()) / 3600000 >= cancellationHours ? (
+                        <Button variant="ghost" size="sm" onClick={() => setRescheduleId(l.id)}>
+                          <CalendarClock className="mr-1 h-4 w-4" /> Reschedule
+                        </Button>
+                      ) : null}
                       <Button variant="ghost" size="sm" onClick={() => setConfirmId(l.id)}>
                         <X className="mr-1 h-4 w-4" /> Cancel
                       </Button>
@@ -187,6 +221,64 @@ function LessonsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!rescheduleId} onOpenChange={(o) => !o && setRescheduleId(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Reschedule lesson</DialogTitle>
+            <DialogDescription>
+              Pick a new open time. Times are shown in {viewerTZ}. Rescheduling is available up to {cancellationHours} hours before the lesson.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[50vh] overflow-y-auto space-y-4 pr-1">
+            {slotsQ.isLoading ? (
+              <p className="text-sm text-muted-foreground">Loading available times…</p>
+            ) : (slotsQ.data?.slots ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground">No open times in the next 3 weeks.</p>
+            ) : (
+              Object.entries(
+                (slotsQ.data?.slots ?? []).reduce<Record<string, string[]>>((acc, iso) => {
+                  const key = new Intl.DateTimeFormat(undefined, {
+                    weekday: "long",
+                    month: "short",
+                    day: "numeric",
+                  }).format(new Date(iso));
+                  (acc[key] ||= []).push(iso);
+                  return acc;
+                }, {}),
+              ).map(([day, isos]) => (
+                <div key={day}>
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">{day}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {isos.map((iso) => (
+                      <Button
+                        key={iso}
+                        variant="outline"
+                        size="sm"
+                        disabled={rescheduleMut.isPending}
+                        onClick={() =>
+                          rescheduleId &&
+                          rescheduleMut.mutate({ lessonId: rescheduleId, startsAtISO: iso })
+                        }
+                      >
+                        {new Intl.DateTimeFormat(undefined, {
+                          hour: "numeric",
+                          minute: "2-digit",
+                        }).format(new Date(iso))}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRescheduleId(null)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

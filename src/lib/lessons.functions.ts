@@ -113,3 +113,83 @@ export const cancelMyLesson = createServerFn({ method: "POST" })
 
     return { ok: true, refunded: refundEligible };
   });
+
+export const rescheduleMyLesson = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { lessonId: string; startsAtISO: string }) =>
+    z
+      .object({
+        lessonId: z.string().uuid(),
+        startsAtISO: z.string().datetime(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: member } = await supabase
+      .from("account_members")
+      .select("account_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!member?.account_id) throw new Error("No account found");
+
+    const { data: lesson } = await supabase
+      .from("lessons")
+      .select("id, account_id, starts_at, status")
+      .eq("id", data.lessonId)
+      .maybeSingle();
+    if (!lesson || lesson.account_id !== member.account_id) throw new Error("Lesson not found");
+    if (lesson.status !== "scheduled") throw new Error("Only scheduled lessons can be rescheduled");
+
+    const { data: settings } = await supabase
+      .from("settings")
+      .select("cancellation_hours")
+      .eq("id", 1)
+      .maybeSingle();
+    const cancellationHours = settings?.cancellation_hours ?? 24;
+    const hoursUntil = (new Date(lesson.starts_at).getTime() - Date.now()) / 3600000;
+    if (hoursUntil < cancellationHours) {
+      throw new Error(
+        `Lessons can only be rescheduled at least ${cancellationHours} hours in advance. Please contact your tutor.`,
+      );
+    }
+
+    const newStart = new Date(data.startsAtISO);
+    if (isNaN(newStart.getTime())) throw new Error("Invalid time");
+    if (newStart.getTime() < Date.now() + 3600000) {
+      throw new Error("New time must be at least 1 hour from now");
+    }
+
+    // Conflict check
+    const { data: conflict } = await supabase
+      .from("lessons")
+      .select("id")
+      .in("status", ["scheduled", "completed"])
+      .eq("starts_at", newStart.toISOString())
+      .neq("id", lesson.id)
+      .maybeSingle();
+    if (conflict) throw new Error("That time was just booked. Please pick another.");
+
+    const previousStartsAtISO = lesson.starts_at;
+    const { error } = await supabase
+      .from("lessons")
+      .update({ starts_at: newStart.toISOString(), reminder_sent_at: null })
+      .eq("id", lesson.id);
+    if (error) throw new Error(error.message);
+
+    try {
+      const { sendLessonUpdateEmails } = await import("@/lib/lesson-emails.server");
+      await sendLessonUpdateEmails({
+        supabaseAdmin: supabase as any,
+        lessonId: lesson.id,
+        kind: "rescheduled",
+        startsAtISO: newStart.toISOString(),
+        previousStartsAtISO,
+      });
+    } catch (e) {
+      console.error("[rescheduleMyLesson] email dispatch error:", e);
+    }
+
+    return { ok: true };
+  });
