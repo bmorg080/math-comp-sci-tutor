@@ -77,7 +77,8 @@ function Landing() {
             <div>
               <h2 className="text-3xl font-semibold">Subjects &amp; pricing</h2>
               <p className="mt-2 text-muted-foreground">
-                Single 1-hour lessons or bundles of 5 for a 10% discount.
+                Single 1-hour lessons or bundles of {settings?.bundle_size ?? 5} for a{" "}
+                {settings?.bundle_discount_pct ?? 5}% discount.
               </p>
             </div>
           </div>
