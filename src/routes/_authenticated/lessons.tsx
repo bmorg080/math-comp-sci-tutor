@@ -158,6 +158,11 @@ function LessonsPage() {
                           </a>
                         </Button>
                       ) : null}
+                      {(new Date(l.starts_at).getTime() - Date.now()) / 3600000 >= cancellationHours ? (
+                        <Button variant="ghost" size="sm" onClick={() => setRescheduleId(l.id)}>
+                          <CalendarClock className="mr-1 h-4 w-4" /> Reschedule
+                        </Button>
+                      ) : null}
                       <Button variant="ghost" size="sm" onClick={() => setConfirmId(l.id)}>
                         <X className="mr-1 h-4 w-4" /> Cancel
                       </Button>
