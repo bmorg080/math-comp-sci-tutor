@@ -26,7 +26,7 @@ export const Route = createFileRoute("/api/public/hooks/lesson-reminders")({
         const { data: lessons, error } = await supabaseAdmin
           .from("lessons")
           .select(
-            "id, starts_at, account_id, student_id, subject_id, students(name), subjects(name), accounts(timezone, user_id)",
+            "id, starts_at, account_id, student_id, subject_id, students(name, email), subjects(name), accounts(timezone, user_id)",
           )
           .eq("status", "scheduled")
           .is("reminder_sent_at", null)
