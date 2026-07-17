@@ -100,6 +100,14 @@ function Dashboard() {
               <StatCard icon={<CalendarDays className="h-5 w-5" />} label="Upcoming lessons" value="0" />
             </div>
 
+            <div className="mt-6">
+              <Button asChild size="lg">
+                <Link to="/book">
+                  <CalendarDays className="h-4 w-4" /> Book a lesson
+                </Link>
+              </Button>
+            </div>
+
             <section className="mt-10">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-semibold">Subjects &amp; pricing</h2>
