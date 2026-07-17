@@ -205,9 +205,11 @@ export const bookLesson = createServerFn({ method: "POST" })
       const tutorTZ = settings?.tutor_timezone ?? "UTC";
       const tutorEmail = settings?.tutor_email;
       const tutorName = settings?.tutor_name ?? "Tutor";
+      const customerTZ = accountRow?.timezone ?? tutorTZ;
       const parentEmail = authUser?.user?.email;
       const parentName =
         (authUser?.user?.user_metadata as { full_name?: string } | undefined)?.full_name ??
+        accountRow?.display_name ??
         "there";
 
       const fmt = (tz: string) =>
