@@ -169,15 +169,17 @@ function Dashboard() {
               </Card>
             </section>
 
-            <section className="mt-10">
-              <h2 className="mb-4 text-xl font-semibold">Coming soon</h2>
-              <Card className="p-6 text-sm text-muted-foreground">
-                Lesson booking calendar, purchase flow, and lesson history are being wired up next.
-              </Card>
-            </section>
           </>
         )}
       </main>
+
+      {data?.account && (
+        <BuyLessonsDialog
+          open={buyOpen}
+          onOpenChange={setBuyOpen}
+          subjects={data.subjects}
+        />
+      )}
     </div>
   );
 }
