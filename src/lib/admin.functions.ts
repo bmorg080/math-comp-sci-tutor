@@ -101,7 +101,9 @@ export const updateSettings = createServerFn({ method: "POST" })
     tutor_name?: string;
     tutor_email?: string;
     tutor_bio?: string;
+    tutor_timezone?: string;
     cancellation_hours?: number;
+    credit_expiry_months?: number;
   }) =>
     z
       .object({
@@ -109,7 +111,9 @@ export const updateSettings = createServerFn({ method: "POST" })
         tutor_name: z.string().max(120).optional(),
         tutor_email: z.string().email().max(200).optional().or(z.literal("")),
         tutor_bio: z.string().max(4000).optional(),
+        tutor_timezone: z.string().min(1).max(80).optional(),
         cancellation_hours: z.number().int().min(0).max(168).optional(),
+        credit_expiry_months: z.number().int().min(1).max(60).optional(),
       })
       .parse(input),
   )
@@ -117,18 +121,18 @@ export const updateSettings = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
 
-    const patch: {
-      zoom_link?: string;
-      tutor_name?: string;
-      tutor_email?: string;
-      tutor_bio?: string;
-      cancellation_hours?: number;
-    } = {};
-    if (data.zoom_link !== undefined) patch.zoom_link = data.zoom_link;
-    if (data.tutor_name !== undefined) patch.tutor_name = data.tutor_name;
-    if (data.tutor_email !== undefined) patch.tutor_email = data.tutor_email;
-    if (data.tutor_bio !== undefined) patch.tutor_bio = data.tutor_bio;
-    if (data.cancellation_hours !== undefined) patch.cancellation_hours = data.cancellation_hours;
+    const patch: Record<string, unknown> = {};
+    for (const k of [
+      "zoom_link",
+      "tutor_name",
+      "tutor_email",
+      "tutor_bio",
+      "tutor_timezone",
+      "cancellation_hours",
+      "credit_expiry_months",
+    ] as const) {
+      if (data[k] !== undefined) patch[k] = data[k];
+    }
 
     const { error } = await supabase.from("settings").update(patch).eq("id", 1);
     if (error) throw new Error(error.message);
