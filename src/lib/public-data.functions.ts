@@ -35,6 +35,7 @@ export type PublicSubject = {
   price_cents: number;
   description: string | null;
   sort_order: number;
+  is_trial: boolean;
 };
 
 export const getPublicHomeData = createServerFn({ method: "GET" }).handler(async () => {
@@ -42,7 +43,7 @@ export const getPublicHomeData = createServerFn({ method: "GET" }).handler(async
   const [subjectsRes, settingsRes] = await Promise.all([
     sb
       .from("subjects")
-      .select("id, name, price_cents, description, sort_order")
+      .select("id, name, price_cents, description, sort_order, is_trial")
       .eq("active", true)
       .order("sort_order"),
     sb
@@ -53,8 +54,10 @@ export const getPublicHomeData = createServerFn({ method: "GET" }).handler(async
       .eq("id", 1)
       .maybeSingle(),
   ]);
+  const all = (subjectsRes.data ?? []) as PublicSubject[];
   return {
-    subjects: (subjectsRes.data ?? []) as PublicSubject[],
+    subjects: all.filter((s) => !s.is_trial),
+    trialSubject: all.find((s) => s.is_trial) ?? null,
     settings: (settingsRes.data ?? null) as PublicSettings | null,
   };
 });
