@@ -196,7 +196,7 @@ export const cancelLessonAsAdmin = createServerFn({ method: "POST" })
 
     const { data: lesson } = await supabase
       .from("lessons")
-      .select("id, credit_id, status, starts_at")
+      .select("id, credit_id, status, starts_at, google_event_id")
       .eq("id", data.lessonId)
       .maybeSingle();
     if (!lesson) throw new Error("Lesson not found");
@@ -219,19 +219,31 @@ export const cancelLessonAsAdmin = createServerFn({ method: "POST" })
       await supabase.from("credits").update({ consumed_lesson_id: null }).eq("id", lesson.credit_id);
     }
 
-    try {
-      const { sendLessonUpdateEmails } = await import("@/lib/lesson-emails.server");
-      await sendLessonUpdateEmails({
-        supabaseAdmin: supabase as any,
-        lessonId: lesson.id,
-        kind: "cancelled",
-        startsAtISO: lesson.starts_at,
-        refunded: !!data.refund,
-        lateCancel: hoursUntil < 24,
-        reason: data.reason,
-      });
-    } catch (e) {
-      console.error("[cancelLessonAsAdmin] email dispatch error:", e);
+    let googleCancelled = false;
+    if (lesson.google_event_id) {
+      try {
+        const { deleteCalendarEvent } = await import("@/lib/calendar.server");
+        googleCancelled = await deleteCalendarEvent(lesson.google_event_id);
+      } catch (e) {
+        console.error("[cancelLessonAsAdmin] calendar delete error:", e);
+      }
+    }
+
+    if (!googleCancelled) {
+      try {
+        const { sendLessonUpdateEmails } = await import("@/lib/lesson-emails.server");
+        await sendLessonUpdateEmails({
+          supabaseAdmin: supabase as any,
+          lessonId: lesson.id,
+          kind: "cancelled",
+          startsAtISO: lesson.starts_at,
+          refunded: !!data.refund,
+          lateCancel: hoursUntil < 24,
+          reason: data.reason,
+        });
+      } catch (e) {
+        console.error("[cancelLessonAsAdmin] email dispatch error:", e);
+      }
     }
     return { ok: true };
   });
@@ -252,7 +264,7 @@ export const rescheduleLessonAsAdmin = createServerFn({ method: "POST" })
 
     const { data: lesson } = await supabase
       .from("lessons")
-      .select("id, status, starts_at, duration_minutes")
+      .select("id, status, starts_at, duration_minutes, google_event_id")
       .eq("id", data.lessonId)
       .maybeSingle();
     if (!lesson) throw new Error("Lesson not found");
@@ -279,17 +291,34 @@ export const rescheduleLessonAsAdmin = createServerFn({ method: "POST" })
       .eq("id", lesson.id);
     if (error) throw new Error(error.message);
 
-    try {
-      const { sendLessonUpdateEmails } = await import("@/lib/lesson-emails.server");
-      await sendLessonUpdateEmails({
-        supabaseAdmin: supabase as any,
-        lessonId: lesson.id,
-        kind: "rescheduled",
-        startsAtISO: newStart.toISOString(),
-        previousStartsAtISO,
-      });
-    } catch (e) {
-      console.error("[rescheduleLessonAsAdmin] email dispatch error:", e);
+    let googleUpdated = false;
+    if (lesson.google_event_id) {
+      try {
+        const { updateCalendarEvent, loadLessonForCalendar } = await import(
+          "@/lib/calendar.server"
+        );
+        const payload = await loadLessonForCalendar(supabase as any, lesson.id);
+        if (payload) {
+          googleUpdated = await updateCalendarEvent(lesson.google_event_id, payload);
+        }
+      } catch (e) {
+        console.error("[rescheduleLessonAsAdmin] calendar update error:", e);
+      }
+    }
+
+    if (!googleUpdated) {
+      try {
+        const { sendLessonUpdateEmails } = await import("@/lib/lesson-emails.server");
+        await sendLessonUpdateEmails({
+          supabaseAdmin: supabase as any,
+          lessonId: lesson.id,
+          kind: "rescheduled",
+          startsAtISO: newStart.toISOString(),
+          previousStartsAtISO,
+        });
+      } catch (e) {
+        console.error("[rescheduleLessonAsAdmin] email dispatch error:", e);
+      }
     }
     return { ok: true };
   });
