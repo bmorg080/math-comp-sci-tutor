@@ -55,7 +55,8 @@ async function handleCheckoutCompleted(session: any): Promise<WebhookOutcome> {
   const perCreditCents = Math.round(Number(session.amount_total ?? 0) / qty);
   const now = new Date();
   const expiresAt = new Date(now.getTime() + CREDIT_EXPIRY_MS).toISOString();
-  const source = kind === "pack5" ? "purchase_bundle" : "purchase_single";
+  const source =
+    kind === "trial" ? "purchase_single" : kind === "pack5" ? "purchase_bundle" : "purchase_single";
 
   const rows = Array.from({ length: qty }, () => ({
     account_id: accountId,
@@ -69,6 +70,13 @@ async function handleCheckoutCompleted(session: any): Promise<WebhookOutcome> {
 
   const { error } = await (supabase.from("credits") as any).insert(rows);
   if (error) throw error;
+
+  // Stamp trial_used_at so the trial offer disappears after one purchase.
+  if (kind === "trial") {
+    await (supabase.from("accounts") as any)
+      .update({ trial_used_at: now.toISOString() })
+      .eq("id", accountId);
+  }
 
   return {
     status: "processed",

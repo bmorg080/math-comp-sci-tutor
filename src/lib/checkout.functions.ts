@@ -14,14 +14,14 @@ export const createLessonCheckout = createServerFn({ method: "POST" })
   .inputValidator(
     (input: {
       subjectId: string;
-      kind: "single" | "pack5";
+      kind: "single" | "pack5" | "trial";
       returnUrl: string;
       environment: StripeEnv;
     }) =>
       z
         .object({
           subjectId: z.string().uuid(),
-          kind: z.enum(["single", "pack5"]),
+          kind: z.enum(["single", "pack5", "trial"]),
           returnUrl: z.string().url(),
           environment: z.enum(["sandbox", "live"]),
         })
@@ -33,7 +33,7 @@ export const createLessonCheckout = createServerFn({ method: "POST" })
     // Find caller's account
     const { data: member } = await supabase
       .from("account_members")
-      .select("account_id, account:accounts(id, display_name, stripe_customer_id)")
+      .select("account_id, account:accounts(id, display_name, stripe_customer_id, trial_used_at)")
       .eq("user_id", userId)
       .maybeSingle();
     if (!member?.account_id) throw new Error("No account found");
@@ -41,20 +41,36 @@ export const createLessonCheckout = createServerFn({ method: "POST" })
       id: string;
       display_name: string;
       stripe_customer_id: string | null;
+      trial_used_at: string | null;
     };
 
     // Look up subject + slug
     const { data: subject } = await supabase
       .from("subjects")
-      .select("id, name, stripe_product_slug, active")
+      .select("id, name, stripe_product_slug, active, is_trial")
       .eq("id", data.subjectId)
       .maybeSingle();
     if (!subject || !subject.active || !subject.stripe_product_slug) {
       throw new Error("Invalid subject");
     }
 
+    // Trial guards
+    if (data.kind === "trial") {
+      if (!subject.is_trial) throw new Error("This subject is not eligible for the trial offer.");
+      if (account.trial_used_at) throw new Error("The trial lesson has already been used for this account.");
+      const { count } = await supabase
+        .from("credits")
+        .select("*", { count: "exact", head: true })
+        .eq("account_id", account.id);
+      if ((count ?? 0) > 0) throw new Error("The trial is only available before your first purchase.");
+    } else if (subject.is_trial) {
+      throw new Error("The trial lesson can only be purchased as a trial.");
+    }
+
     const quantity = data.kind === "pack5" ? 5 : 1;
-    const priceLookupKey = `${subject.stripe_product_slug}_${data.kind === "pack5" ? "pack5" : "single"}`;
+    const priceSuffix =
+      data.kind === "pack5" ? "pack5" : "single"; // trial uses the single-price lookup
+    const priceLookupKey = `${subject.stripe_product_slug}_${priceSuffix}`;
 
     try {
       const stripe = createStripeClient(data.environment);

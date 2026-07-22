@@ -69,11 +69,11 @@ export const getMyAccountOverview = createServerFn({ method: "GET" })
       return { account: null, students: [], subjects: [], credits: 0, isAdmin: false };
     }
 
-    const [studentsRes, subjectsRes, customPricesRes, creditsRes, roleRes] = await Promise.all([
+    const [studentsRes, subjectsRes, customPricesRes, creditsRes, roleRes, acctRes] = await Promise.all([
       supabase.from("students").select("id, name, grade_level, email").eq("account_id", member.account_id),
       supabase
         .from("subjects")
-        .select("id, name, price_cents, description, sort_order")
+        .select("id, name, price_cents, description, sort_order, is_trial")
         .eq("active", true)
         .order("sort_order"),
       supabase.from("custom_prices").select("subject_id, price_cents").eq("account_id", member.account_id),
@@ -85,14 +85,24 @@ export const getMyAccountOverview = createServerFn({ method: "GET" })
         .is("refunded_at", null)
         .gt("expires_at", new Date().toISOString()),
       supabase.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle(),
+      supabase.from("accounts").select("trial_used_at").eq("id", member.account_id).maybeSingle(),
     ]);
 
+    // Trial eligibility: never used trial AND account has never purchased any credits.
+    const { count: everCredits } = await supabase
+      .from("credits")
+      .select("*", { count: "exact", head: true })
+      .eq("account_id", member.account_id);
+    const trialEligible = !acctRes.data?.trial_used_at && (everCredits ?? 0) === 0;
+
     const customMap = new Map((customPricesRes.data ?? []).map((c) => [c.subject_id, c.price_cents]));
-    const subjects = (subjectsRes.data ?? []).map((s) => ({
+    const allSubjects = (subjectsRes.data ?? []).map((s) => ({
       ...s,
       effective_price_cents: customMap.get(s.id) ?? s.price_cents,
       has_custom_price: customMap.has(s.id),
     }));
+    const subjects = allSubjects.filter((s) => !s.is_trial);
+    const trialSubject = trialEligible ? allSubjects.find((s) => s.is_trial) ?? null : null;
 
     return {
       account: member.account,
@@ -100,6 +110,8 @@ export const getMyAccountOverview = createServerFn({ method: "GET" })
       email: member.email,
       students: studentsRes.data ?? [],
       subjects,
+      trialSubject,
+      trialEligible,
       credits: creditsRes.data?.length ?? 0,
       isAdmin: !!roleRes.data,
     };

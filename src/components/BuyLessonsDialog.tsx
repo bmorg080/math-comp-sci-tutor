@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { EmbeddedCheckoutProvider, EmbeddedCheckout } from "@stripe/react-stripe-js";
@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { getStripe, getStripeEnvironment } from "@/lib/stripe";
 import { createLessonCheckout } from "@/lib/checkout.functions";
 import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
-import { Button } from "@/components/ui/button";
+import { Sparkles } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -32,24 +32,35 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   subjects: Subject[];
+  trialSubject?: { id: string; name: string; price_cents: number } | null;
   defaultSubjectId?: string;
 }
 
-export function BuyLessonsDialog({ open, onOpenChange, subjects, defaultSubjectId }: Props) {
+export function BuyLessonsDialog({
+  open,
+  onOpenChange,
+  subjects,
+  trialSubject,
+  defaultSubjectId,
+}: Props) {
   const doCheckout = useServerFn(createLessonCheckout);
   const [subjectId, setSubjectId] = useState(defaultSubjectId ?? subjects[0]?.id ?? "");
   const [clientSecret, setClientSecret] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!subjectId && subjects[0]) setSubjectId(subjects[0].id);
+  }, [subjects, subjectId]);
 
   const subject = subjects.find((s) => s.id === subjectId);
   const singleCents = subject?.effective_price_cents ?? 0;
   const pack5Cents = Math.round(singleCents * 5 * 0.95);
 
   const buyMut = useMutation({
-    mutationFn: async (kind: "single" | "pack5") => {
+    mutationFn: async (opts: { subjectId: string; kind: "single" | "pack5" | "trial" }) => {
       const res = await doCheckout({
         data: {
-          subjectId,
-          kind,
+          subjectId: opts.subjectId,
+          kind: opts.kind,
           returnUrl: `${window.location.origin}/dashboard?purchase=success`,
           environment: getStripeEnvironment(),
         },
@@ -90,6 +101,29 @@ export function BuyLessonsDialog({ open, onOpenChange, subjects, defaultSubjectI
           </div>
         ) : (
           <div className="space-y-4">
+            {trialSubject && (
+              <button
+                type="button"
+                onClick={() => buyMut.mutate({ subjectId: trialSubject.id, kind: "trial" })}
+                disabled={buyMut.isPending}
+                className="relative w-full rounded-lg border-2 border-accent bg-accent/10 p-4 text-left transition hover:shadow-sm disabled:opacity-50"
+              >
+                <div className="absolute right-3 top-3 rounded-full bg-accent px-2 py-0.5 text-xs font-medium text-accent-foreground">
+                  New family offer
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Sparkles className="h-4 w-4 text-accent" />
+                  {trialSubject.name}
+                </div>
+                <div className="mt-1 text-2xl font-semibold">
+                  ${(trialSubject.price_cents / 100).toFixed(2)}
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                  1 credit • 1 hour • available once per family
+                </div>
+              </button>
+            )}
+
             <div>
               <label className="mb-1 block text-sm font-medium">Subject</label>
               <Select value={subjectId} onValueChange={setSubjectId}>
@@ -109,7 +143,7 @@ export function BuyLessonsDialog({ open, onOpenChange, subjects, defaultSubjectI
             <div className="grid gap-3 sm:grid-cols-2">
               <button
                 type="button"
-                onClick={() => buyMut.mutate("single")}
+                onClick={() => buyMut.mutate({ subjectId, kind: "single" })}
                 disabled={!subjectId || buyMut.isPending}
                 className="rounded-lg border bg-card p-4 text-left transition hover:border-primary hover:shadow-sm disabled:opacity-50"
               >
@@ -122,7 +156,7 @@ export function BuyLessonsDialog({ open, onOpenChange, subjects, defaultSubjectI
 
               <button
                 type="button"
-                onClick={() => buyMut.mutate("pack5")}
+                onClick={() => buyMut.mutate({ subjectId, kind: "pack5" })}
                 disabled={!subjectId || buyMut.isPending}
                 className="relative rounded-lg border-2 border-primary bg-card p-4 text-left transition hover:shadow-sm disabled:opacity-50"
               >

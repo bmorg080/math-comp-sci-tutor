@@ -57,7 +57,7 @@ export const getAdminOverview = createServerFn({ method: "GET" })
         .from("accounts")
         .select("id, display_name, timezone, created_at")
         .order("created_at", { ascending: false }),
-      supabase.from("subjects").select("id, name, price_cents, active, sort_order").order("sort_order"),
+      supabase.from("subjects").select("id, name, price_cents, active, sort_order, is_trial").order("sort_order"),
       supabase
         .from("credits")
         .select("account_id, consumed_lesson_id, refunded_at, expires_at")
@@ -303,6 +303,7 @@ export const updateSubject = createServerFn({ method: "POST" })
     active?: boolean;
     description?: string;
     sort_order?: number;
+    is_trial?: boolean;
   }) =>
     z
       .object({
@@ -312,6 +313,7 @@ export const updateSubject = createServerFn({ method: "POST" })
         active: z.boolean().optional(),
         description: z.string().max(1000).optional(),
         sort_order: z.number().int().min(0).max(9999).optional(),
+        is_trial: z.boolean().optional(),
       })
       .parse(input),
   )
@@ -325,16 +327,140 @@ export const updateSubject = createServerFn({ method: "POST" })
       active?: boolean;
       description?: string;
       sort_order?: number;
+      is_trial?: boolean;
     } = {};
     if (data.name !== undefined) patch.name = data.name;
     if (data.price_cents !== undefined) patch.price_cents = data.price_cents;
     if (data.active !== undefined) patch.active = data.active;
     if (data.description !== undefined) patch.description = data.description;
     if (data.sort_order !== undefined) patch.sort_order = data.sort_order;
+    if (data.is_trial !== undefined) patch.is_trial = data.is_trial;
 
     const { error } = await supabase.from("subjects").update(patch).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 60) || "subject";
+}
+
+export const createSubject = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { name: string; price_cents: number; is_trial?: boolean }) =>
+    z
+      .object({
+        name: z.string().trim().min(1).max(120),
+        price_cents: z.number().int().min(0).max(1_000_000),
+        is_trial: z.boolean().optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+
+    // Determine sort order (append to end)
+    const { data: last } = await supabase
+      .from("subjects")
+      .select("sort_order")
+      .order("sort_order", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const sortOrder = (last?.sort_order ?? 0) + 1;
+
+    // Build a unique slug for Stripe lookup keys
+    const base = slugify(data.name);
+    let slug = base;
+    for (let i = 2; i < 20; i++) {
+      const { data: dupe } = await supabase
+        .from("subjects")
+        .select("id")
+        .eq("stripe_product_slug", slug)
+        .maybeSingle();
+      if (!dupe) break;
+      slug = `${base}_${i}`;
+    }
+
+    const { data: inserted, error } = await supabase
+      .from("subjects")
+      .insert({
+        name: data.name,
+        price_cents: data.price_cents,
+        active: true,
+        sort_order: sortOrder,
+        stripe_product_slug: slug,
+        is_trial: data.is_trial ?? false,
+      })
+      .select("id")
+      .single();
+    if (error) throw new Error(error.message);
+
+    // Create matching Stripe product + prices (best-effort — subject exists
+    // even if Stripe is briefly unreachable; admin can re-run).
+    try {
+      const { createStripeClient } = await import("@/lib/stripe.server");
+      const stripe = createStripeClient("sandbox");
+      const product = await stripe.products.create({
+        name: data.name,
+        metadata: { slug },
+      });
+      await stripe.prices.create({
+        product: product.id,
+        unit_amount: data.price_cents,
+        currency: "usd",
+        lookup_key: `${slug}_single`,
+        transfer_lookup_key: true,
+      });
+      if (!data.is_trial) {
+        await stripe.prices.create({
+          product: product.id,
+          unit_amount: Math.round(data.price_cents * 5 * 0.95),
+          currency: "usd",
+          lookup_key: `${slug}_pack5`,
+          transfer_lookup_key: true,
+        });
+      }
+    } catch (e) {
+      console.error("[createSubject] Stripe product creation failed:", e);
+    }
+
+    return { ok: true, id: inserted.id };
+  });
+
+export const deleteSubject = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) =>
+    z.object({ id: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+
+    // Any lessons reference this subject?
+    const { count: lessonCount } = await supabase
+      .from("lessons")
+      .select("*", { count: "exact", head: true })
+      .eq("subject_id", data.id);
+    if ((lessonCount ?? 0) > 0) {
+      // Soft-delete: mark inactive so history stays intact
+      const { error } = await supabase
+        .from("subjects")
+        .update({ active: false })
+        .eq("id", data.id);
+      if (error) throw new Error(error.message);
+      return { ok: true, softDeleted: true };
+    }
+
+    // No references — safe to hard-delete
+    const { error } = await supabase.from("subjects").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true, softDeleted: false };
   });
 
 const availabilitySchema = z.record(
