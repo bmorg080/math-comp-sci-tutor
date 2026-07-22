@@ -1,25 +1,47 @@
-## Change your email sender domain
+Three items to add.
 
-This is a configuration change in Cloud, not a code change — no files need to be edited. Your current sender is `notify.stemtutor.com` (still pending DNS verification).
+## 1. Admin: add/remove subjects + trial subject
 
-### Steps
+**Add/remove subjects** (`src/components/admin/SubjectsEditor.tsx` + `src/lib/admin.functions.ts`):
+- `createSubject` server fn: inserts into `subjects`, then creates matching Stripe product + single/pack5 prices with the same `stripe_product_slug` lookup-key pattern used in `checkout.functions.ts`.
+- `deleteSubject` server fn: soft-delete (`active=false`) if any credits/lessons reference it; hard-delete only if untouched. Deactivates Stripe prices.
+- Editor gets an "Add subject" row (name + price) and a delete button per row with a confirm dialog.
 
-1. Open **Cloud → Emails → Manage Domains**.
-2. Remove `notify.stemtutor.com` (three-dot menu → Remove).
-3. Click **Add domain** and enter the new subdomain you want to send from (for example `mail.yournewdomain.com`). Use a subdomain you own — Lovable does not offer a shared sender.
-4. Lovable will show a TXT record and two NS records specific to the new domain. Add them at your DNS provider for the root domain.
-5. Wait for verification (usually minutes, up to 72h). Status is visible in **Cloud → Emails**.
+**Trial subject**:
+- Migration: add `is_trial boolean default false` to `subjects` (unique partial index so only one active trial) and `trial_used_at timestamptz` to `accounts`.
+- Seed "Trial lesson" at $35, `is_trial=true`, with a single Stripe price only (no pack5).
+- `checkout.functions.ts`: if `subject.is_trial`, force `kind='single'`; block if `account.trial_used_at` is set OR the account already has any `credits` row. Webhook stamps `trial_used_at` on trial purchase.
+- `BuyLessonsDialog` + landing page: show the trial as a distinct card ("First lesson — $35, one-time") only when the account is trial-eligible; hide once used or once any other purchase exists.
+- Admin editor lets you toggle `is_trial` and edit the trial price.
 
-### What happens to your app
+## 2. Homepage copy
 
-- No code changes required. The send helper (`src/lib/email-templates/send-email.ts`) reads the configured sender domain automatically.
-- While the new domain is verifying, lesson confirmation/reminder/cancellation emails will not deliver (they'll fail silently with `domain_not_verified`, and booking still succeeds).
-- Auth emails (signup, password reset) keep working via the default Lovable fallback during the transition.
-- Once verified, all lesson emails resume delivery to parent, student (if set), and tutor.
+`src/routes/index.tsx`: change H1 to "Math & computer science tutoring." (drop the trailing clause).
 
-### Notes
+## 3. Google Calendar integration (tutor's calendar)
 
-- If you don't yet own the new root domain, buy one first via **Project Settings → Project → Domains → Buy new domain**, or any external registrar.
-- If your DNS provider can't create NS records (e.g. Shopify-managed DNS), either transfer the domain into Lovable or move DNS hosting to a provider that supports NS records (e.g. Cloudflare free plan).
+Workspace-scoped: events on **your** calendar, client attends as an invitee. Uses the standard `google_calendar` App connector (gateway-backed) — clients don't connect their own Google accounts.
 
-Want me to walk through this live once you've picked the new subdomain?
+Steps:
+1. Link `google_calendar` via `standard_connectors--connect` (authorize with the Google account holding the lessons calendar).
+2. New `src/lib/calendar.server.ts` with `createLessonEvent` / `updateLessonEvent` / `cancelLessonEvent` helpers hitting `https://connector-gateway.lovable.dev/google_calendar/calendar/v3/calendars/primary/events`:
+   - summary: `{subject} — {student name}`
+   - description: parent/student contact + Zoom link from `settings.zoom_link`
+   - start/end in tutor timezone (1h)
+   - attendees: parent email + student email (if set)
+   - `sendUpdates=all` so Google emails the invite/update/cancel
+3. Add `google_event_id text` column to `lessons`. Store on create, use it on reschedule/cancel.
+4. Wire calls into `bookLesson`, `rescheduleMyLesson`, `rescheduleLessonAsAdmin`, `cancelMyLesson`, `cancelLessonAsAdmin` — best-effort (calendar failure shouldn't block the DB action, mirroring emails).
+
+**Suppress Lovable confirmation emails to avoid double-emailing:**
+- `bookLesson` in `src/lib/booking.functions.ts`: only send `lesson-confirmation` if the calendar event creation fails (fallback path). On success, Google's invite covers the parent + student; tutor gets the calendar event directly.
+- `rescheduleMyLesson` / `rescheduleLessonAsAdmin` / `cancelMyLesson` / `cancelLessonAsAdmin`: skip the `sendLessonUpdateEmails` call when the calendar update/cancel succeeds. Google sends update/cancellation notices via `sendUpdates=all`.
+- 24-hour reminder in `src/routes/api/public/hooks/lesson-reminders.ts`: **keep** — Google Calendar's default reminders are per-attendee and unreliable; the branded reminder with Zoom link is worth keeping.
+- Net effect: on the happy path (calendar works), only Google invites + our reminder go out. On calendar failure, we fall back to our confirmation/update emails so the client is never left uninformed.
+
+## Suggested order
+1. Homepage copy (trivial).
+2. Subjects add/remove + trial.
+3. Google Calendar (I'll prompt you to authorize the connector when we get there).
+
+Want me to proceed in this order?

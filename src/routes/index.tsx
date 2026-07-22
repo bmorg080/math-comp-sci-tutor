@@ -51,7 +51,7 @@ function Landing() {
               Private online tutoring
             </span>
             <h1 className="mt-5 text-4xl font-semibold leading-tight sm:text-6xl">
-              Math &amp; computer science tutoring, one focused hour at a time.
+              Math &amp; computer science tutoring.
             </h1>
             <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
               {settings?.tutor_bio ||

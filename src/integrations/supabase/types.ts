@@ -57,6 +57,7 @@ export type Database = {
           notes: string | null
           stripe_customer_id: string | null
           timezone: string
+          trial_used_at: string | null
           updated_at: string
         }
         Insert: {
@@ -66,6 +67,7 @@ export type Database = {
           notes?: string | null
           stripe_customer_id?: string | null
           timezone?: string
+          trial_used_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -75,6 +77,7 @@ export type Database = {
           notes?: string | null
           stripe_customer_id?: string | null
           timezone?: string
+          trial_used_at?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -209,6 +212,7 @@ export type Database = {
           created_at: string
           credit_id: string | null
           duration_minutes: number
+          google_event_id: string | null
           id: string
           price_cents_paid: number
           reminder_sent_at: string | null
@@ -227,6 +231,7 @@ export type Database = {
           created_at?: string
           credit_id?: string | null
           duration_minutes?: number
+          google_event_id?: string | null
           id?: string
           price_cents_paid?: number
           reminder_sent_at?: string | null
@@ -245,6 +250,7 @@ export type Database = {
           created_at?: string
           credit_id?: string | null
           duration_minutes?: number
+          google_event_id?: string | null
           id?: string
           price_cents_paid?: number
           reminder_sent_at?: string | null
@@ -375,6 +381,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_trial: boolean
           name: string
           price_cents: number
           sort_order: number
@@ -385,6 +392,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_trial?: boolean
           name: string
           price_cents: number
           sort_order?: number
@@ -395,6 +403,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          is_trial?: boolean
           name?: string
           price_cents?: number
           sort_order?: number
