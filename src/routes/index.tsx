@@ -20,6 +20,7 @@ function Landing() {
   });
 
   const subjects = data?.subjects ?? [];
+  const trialSubject = data?.trialSubject ?? null;
   const settings = data?.settings;
 
   return (
@@ -82,6 +83,25 @@ function Landing() {
               </p>
             </div>
           </div>
+          {trialSubject && (
+            <Card className="mb-4 flex items-center justify-between border-2 border-accent bg-accent/10 p-5">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-accent" />
+                  <p className="font-medium">{trialSubject.name}</p>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  New families: try a full 1-hour lesson, available once per family.
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="font-display text-2xl font-semibold text-primary">
+                  ${(trialSubject.price_cents / 100).toFixed(0)}
+                </p>
+                <p className="text-xs text-muted-foreground">one time</p>
+              </div>
+            </Card>
+          )}
           <div className="grid gap-3 sm:grid-cols-2">
             {subjects.map((s) => (
               <Card key={s.id} className="flex items-center justify-between p-5">
