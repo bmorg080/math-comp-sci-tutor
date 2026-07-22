@@ -59,7 +59,7 @@ export const cancelMyLesson = createServerFn({ method: "POST" })
 
     const { data: lesson } = await supabase
       .from("lessons")
-      .select("id, account_id, starts_at, status, credit_id")
+      .select("id, account_id, starts_at, status, credit_id, google_event_id")
       .eq("id", data.lessonId)
       .maybeSingle();
     if (!lesson || lesson.account_id !== member.account_id) throw new Error("Lesson not found");
@@ -95,20 +95,32 @@ export const cancelMyLesson = createServerFn({ method: "POST" })
         .eq("id", lesson.credit_id);
     }
 
-    // Notify both parties (best-effort)
-    try {
-      const { sendLessonUpdateEmails } = await import("@/lib/lesson-emails.server");
-      await sendLessonUpdateEmails({
-        supabaseAdmin: supabase as any,
-        lessonId: lesson.id,
-        kind: "cancelled",
-        startsAtISO: lesson.starts_at,
-        refunded: refundEligible,
-        lateCancel: !refundEligible,
-        reason: data.reason,
-      });
-    } catch (e) {
-      console.error("[cancelMyLesson] email dispatch error:", e);
+    // Google Calendar sends the cancellation notice; suppress Lovable email if it succeeds.
+    let googleCancelled = false;
+    if (lesson.google_event_id) {
+      try {
+        const { deleteCalendarEvent } = await import("@/lib/calendar.server");
+        googleCancelled = await deleteCalendarEvent(lesson.google_event_id);
+      } catch (e) {
+        console.error("[cancelMyLesson] calendar delete error:", e);
+      }
+    }
+
+    if (!googleCancelled) {
+      try {
+        const { sendLessonUpdateEmails } = await import("@/lib/lesson-emails.server");
+        await sendLessonUpdateEmails({
+          supabaseAdmin: supabase as any,
+          lessonId: lesson.id,
+          kind: "cancelled",
+          startsAtISO: lesson.starts_at,
+          refunded: refundEligible,
+          lateCancel: !refundEligible,
+          reason: data.reason,
+        });
+      } catch (e) {
+        console.error("[cancelMyLesson] email dispatch error:", e);
+      }
     }
 
     return { ok: true, refunded: refundEligible };
@@ -136,7 +148,7 @@ export const rescheduleMyLesson = createServerFn({ method: "POST" })
 
     const { data: lesson } = await supabase
       .from("lessons")
-      .select("id, account_id, starts_at, status")
+      .select("id, account_id, starts_at, status, google_event_id")
       .eq("id", data.lessonId)
       .maybeSingle();
     if (!lesson || lesson.account_id !== member.account_id) throw new Error("Lesson not found");
@@ -178,17 +190,36 @@ export const rescheduleMyLesson = createServerFn({ method: "POST" })
       .eq("id", lesson.id);
     if (error) throw new Error(error.message);
 
-    try {
-      const { sendLessonUpdateEmails } = await import("@/lib/lesson-emails.server");
-      await sendLessonUpdateEmails({
-        supabaseAdmin: supabase as any,
-        lessonId: lesson.id,
-        kind: "rescheduled",
-        startsAtISO: newStart.toISOString(),
-        previousStartsAtISO,
-      });
-    } catch (e) {
-      console.error("[rescheduleMyLesson] email dispatch error:", e);
+    // Update Google Calendar event; Google notifies attendees. If it succeeds,
+    // skip the Lovable reschedule email.
+    let googleUpdated = false;
+    if (lesson.google_event_id) {
+      try {
+        const { updateCalendarEvent, loadLessonForCalendar } = await import(
+          "@/lib/calendar.server"
+        );
+        const payload = await loadLessonForCalendar(supabase as any, lesson.id);
+        if (payload) {
+          googleUpdated = await updateCalendarEvent(lesson.google_event_id, payload);
+        }
+      } catch (e) {
+        console.error("[rescheduleMyLesson] calendar update error:", e);
+      }
+    }
+
+    if (!googleUpdated) {
+      try {
+        const { sendLessonUpdateEmails } = await import("@/lib/lesson-emails.server");
+        await sendLessonUpdateEmails({
+          supabaseAdmin: supabase as any,
+          lessonId: lesson.id,
+          kind: "rescheduled",
+          startsAtISO: newStart.toISOString(),
+          previousStartsAtISO,
+        });
+      } catch (e) {
+        console.error("[rescheduleMyLesson] email dispatch error:", e);
+      }
     }
 
     return { ok: true };

@@ -183,92 +183,115 @@ export const bookLesson = createServerFn({ method: "POST" })
       .update({ consumed_lesson_id: lesson.id })
       .eq("id", credit.id);
 
-    // Send confirmation emails (best-effort, don't fail booking on email errors)
+    // Try Google Calendar first; if it succeeds, Google emails the invite
+    // (with the Zoom link) to the tutor and every attendee, and we skip
+    // the Lovable confirmation emails to avoid double-sending.
+    let googleSynced = false;
     try {
-      const { sendTemplateEmail } = await import("@/lib/email-templates/send-email");
-      const [{ data: settings }, { data: studentRow }, { data: subjectRow }, { data: accountRow }, { data: authUser }] =
-        await Promise.all([
-          supabase
-            .from("settings")
-            .select("zoom_link, tutor_name, tutor_email, tutor_timezone")
-            .eq("id", 1)
-            .maybeSingle(),
-          supabase.from("students").select("name, email").eq("id", data.studentId).maybeSingle(),
-          supabase.from("subjects").select("name").eq("id", data.subjectId).maybeSingle(),
-          supabase.from("accounts").select("timezone, display_name").eq("id", accountId).maybeSingle(),
-          supabase.auth.getUser(),
-        ]);
-
-      const studentName = studentRow?.name ?? "Student";
-      const studentEmail = studentRow?.email ?? null;
-      const subjectName = subjectRow?.name ?? "Lesson";
-      const zoomLink = settings?.zoom_link ?? "";
-      const tutorTZ = settings?.tutor_timezone ?? "UTC";
-      const tutorEmail = settings?.tutor_email;
-      const tutorName = settings?.tutor_name ?? "Tutor";
-      const customerTZ = accountRow?.timezone ?? tutorTZ;
-      const parentEmail = authUser?.user?.email;
-      const parentName =
-        (authUser?.user?.user_metadata as { full_name?: string } | undefined)?.full_name ??
-        accountRow?.display_name ??
-        "there";
-
-      const fmt = (tz: string) =>
-        new Intl.DateTimeFormat("en-US", {
-          timeZone: tz,
-          weekday: "long",
-          month: "short",
-          day: "numeric",
-          hour: "numeric",
-          minute: "2-digit",
-          timeZoneName: "short",
-        }).format(new Date(startsAt));
-
-      const customerTemplateData = {
-        studentName,
-        subjectName,
-        whenForOther: fmt(tutorTZ),
-        otherLabel: "Tutor's time",
-        zoomLink,
-        isTutor: false,
-        whenForRecipient: fmt(customerTZ),
-      };
-
-      // Send to parent
-      if (parentEmail) {
-        await sendTemplateEmail("lesson-confirmation", parentEmail, {
-          idempotencyKey: `lesson-confirm-parent-${lesson.id}`,
-          templateData: { ...customerTemplateData, recipientName: parentName },
-        }).catch((e) => console.error("[booking] parent email failed:", e));
-      }
-
-      // Send a copy to the student's own email if provided
-      if (studentEmail && studentEmail !== parentEmail) {
-        await sendTemplateEmail("lesson-confirmation", studentEmail, {
-          idempotencyKey: `lesson-confirm-student-${lesson.id}`,
-          templateData: { ...customerTemplateData, recipientName: studentName },
-        }).catch((e) => console.error("[booking] student email failed:", e));
-      }
-
-      // Send to tutor
-      if (tutorEmail) {
-        await sendTemplateEmail("lesson-confirmation", tutorEmail, {
-          idempotencyKey: `lesson-confirm-tutor-${lesson.id}`,
-          templateData: {
-            recipientName: tutorName,
-            studentName,
-            subjectName,
-            whenForRecipient: fmt(tutorTZ),
-            whenForOther: fmt(customerTZ),
-            otherLabel: "Student's time",
-            zoomLink,
-            isTutor: true,
-          },
-        }).catch((e) => console.error("[booking] tutor email failed:", e));
+      const { createCalendarEvent, loadLessonForCalendar } = await import(
+        "@/lib/calendar.server"
+      );
+      const payload = await loadLessonForCalendar(supabase as any, lesson.id);
+      if (payload) {
+        const eventId = await createCalendarEvent(payload);
+        if (eventId) {
+          await supabase
+            .from("lessons")
+            .update({ google_event_id: eventId })
+            .eq("id", lesson.id);
+          googleSynced = true;
+        }
       }
     } catch (e) {
-      console.error("[booking] email dispatch error:", e);
+      console.error("[booking] calendar sync error:", e);
     }
 
-    return { ok: true as const, lessonId: lesson.id };
+    // Fallback: send Lovable confirmation emails only when Google Calendar
+    // did not send an invite for us.
+    if (!googleSynced) {
+      try {
+        const { sendTemplateEmail } = await import("@/lib/email-templates/send-email");
+        const [{ data: settings }, { data: studentRow }, { data: subjectRow }, { data: accountRow }, { data: authUser }] =
+          await Promise.all([
+            supabase
+              .from("settings")
+              .select("zoom_link, tutor_name, tutor_email, tutor_timezone")
+              .eq("id", 1)
+              .maybeSingle(),
+            supabase.from("students").select("name, email").eq("id", data.studentId).maybeSingle(),
+            supabase.from("subjects").select("name").eq("id", data.subjectId).maybeSingle(),
+            supabase.from("accounts").select("timezone, display_name").eq("id", accountId).maybeSingle(),
+            supabase.auth.getUser(),
+          ]);
+
+        const studentName = studentRow?.name ?? "Student";
+        const studentEmail = studentRow?.email ?? null;
+        const subjectName = subjectRow?.name ?? "Lesson";
+        const zoomLink = settings?.zoom_link ?? "";
+        const tutorTZ = settings?.tutor_timezone ?? "UTC";
+        const tutorEmail = settings?.tutor_email;
+        const tutorName = settings?.tutor_name ?? "Tutor";
+        const customerTZ = accountRow?.timezone ?? tutorTZ;
+        const parentEmail = authUser?.user?.email;
+        const parentName =
+          (authUser?.user?.user_metadata as { full_name?: string } | undefined)?.full_name ??
+          accountRow?.display_name ??
+          "there";
+
+        const fmt = (tz: string) =>
+          new Intl.DateTimeFormat("en-US", {
+            timeZone: tz,
+            weekday: "long",
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+            timeZoneName: "short",
+          }).format(new Date(startsAt));
+
+        const customerTemplateData = {
+          studentName,
+          subjectName,
+          whenForOther: fmt(tutorTZ),
+          otherLabel: "Tutor's time",
+          zoomLink,
+          isTutor: false,
+          whenForRecipient: fmt(customerTZ),
+        };
+
+        if (parentEmail) {
+          await sendTemplateEmail("lesson-confirmation", parentEmail, {
+            idempotencyKey: `lesson-confirm-parent-${lesson.id}`,
+            templateData: { ...customerTemplateData, recipientName: parentName },
+          }).catch((e) => console.error("[booking] parent email failed:", e));
+        }
+
+        if (studentEmail && studentEmail !== parentEmail) {
+          await sendTemplateEmail("lesson-confirmation", studentEmail, {
+            idempotencyKey: `lesson-confirm-student-${lesson.id}`,
+            templateData: { ...customerTemplateData, recipientName: studentName },
+          }).catch((e) => console.error("[booking] student email failed:", e));
+        }
+
+        if (tutorEmail) {
+          await sendTemplateEmail("lesson-confirmation", tutorEmail, {
+            idempotencyKey: `lesson-confirm-tutor-${lesson.id}`,
+            templateData: {
+              recipientName: tutorName,
+              studentName,
+              subjectName,
+              whenForRecipient: fmt(tutorTZ),
+              whenForOther: fmt(customerTZ),
+              otherLabel: "Student's time",
+              zoomLink,
+              isTutor: true,
+            },
+          }).catch((e) => console.error("[booking] tutor email failed:", e));
+        }
+      } catch (e) {
+        console.error("[booking] email dispatch error:", e);
+      }
+    }
+
+    return { ok: true as const, lessonId: lesson.id, googleSynced };
   });
