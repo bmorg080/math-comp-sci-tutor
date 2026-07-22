@@ -189,6 +189,7 @@ function Dashboard() {
           open={buyOpen}
           onOpenChange={setBuyOpen}
           subjects={data.subjects}
+          trialSubject={data.trialSubject}
         />
       )}
     </div>
