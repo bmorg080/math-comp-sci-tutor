@@ -34,6 +34,8 @@ interface Props {
   subjects: Subject[];
   trialSubject?: { id: string; name: string; price_cents: number } | null;
   defaultSubjectId?: string;
+  bundleSize?: number;
+  bundleDiscountPct?: number;
 }
 
 export function BuyLessonsDialog({
@@ -42,6 +44,8 @@ export function BuyLessonsDialog({
   subjects,
   trialSubject,
   defaultSubjectId,
+  bundleSize = 5,
+  bundleDiscountPct = 10,
 }: Props) {
   const doCheckout = useServerFn(createLessonCheckout);
   const [subjectId, setSubjectId] = useState(defaultSubjectId ?? subjects[0]?.id ?? "");
@@ -53,7 +57,7 @@ export function BuyLessonsDialog({
 
   const subject = subjects.find((s) => s.id === subjectId);
   const singleCents = subject?.effective_price_cents ?? 0;
-  const pack5Cents = Math.round(singleCents * 5 * 0.9);
+  const pack5Cents = Math.round(singleCents * bundleSize * (1 - bundleDiscountPct / 100));
 
   const buyMut = useMutation({
     mutationFn: async (opts: { subjectId: string; kind: "single" | "pack5" | "trial" }) => {
@@ -88,7 +92,7 @@ export function BuyLessonsDialog({
         <DialogHeader>
           <DialogTitle>Buy lesson credits</DialogTitle>
           <DialogDescription>
-            Credits expire 9 months after purchase. A pack of 5 saves 10% vs. single lessons.
+            Credits expire 9 months after purchase. A pack of {bundleSize} saves {bundleDiscountPct}% vs. single lessons.
           </DialogDescription>
         </DialogHeader>
 
@@ -168,7 +172,7 @@ export function BuyLessonsDialog({
                   ${(pack5Cents / 100).toFixed(2)}
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  5 credits • ${(pack5Cents / 5 / 100).toFixed(2)}/hr
+                  5 credits • ${(pack5Cents / bundleSize / 100).toFixed(2)}/hr
                 </div>
               </button>
             </div>
