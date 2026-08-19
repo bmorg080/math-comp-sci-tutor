@@ -447,9 +447,15 @@ export const createSubject = createServerFn({ method: "POST" })
         transfer_lookup_key: true,
       });
       if (!data.is_trial) {
+        const { bundle_discount_pct } = await context.supabase
+          .from("settings")
+          .select("bundle_discount_pct")
+          .single()
+          .then((r) => r.data ?? { bundle_discount_pct: 10 });
+        const pct = bundle_discount_pct ?? 10;
         await stripe.prices.create({
           product: product.id,
-          unit_amount: Math.round(data.price_cents * 5 * 0.95),
+          unit_amount: Math.round(data.price_cents * 5 * (1 - pct / 100)),
           currency: "usd",
           lookup_key: `${slug}_pack5`,
           transfer_lookup_key: true,
