@@ -32,7 +32,7 @@ class Query implements PromiseLike<{ data: any; error: any }> {
   private limitN: number | null = null;
   private mode: "select" | "insert" | "update" = "select";
   private payload: Row | null = null;
-  private single: "none" | "maybe" | "one" = "none";
+  private singleMode: "none" | "maybe" | "one" = "none";
 
   constructor(
     private db: Tables,
@@ -94,12 +94,11 @@ class Query implements PromiseLike<{ data: any; error: any }> {
     return this;
   }
   maybeSingle() {
-    this.single = "maybe";
+    this.singleMode = "maybe";
     return this;
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  singleRow() {
-    this.single = "one";
+  single() {
+    this.singleMode = "one";
     return this;
   }
 
@@ -120,16 +119,16 @@ class Query implements PromiseLike<{ data: any; error: any }> {
     if (this.mode === "insert") {
       const row = { id: nextId(this.table), ...this.payload };
       this.rows().push(row);
-      return { data: this.single === "none" ? [row] : row, error: null };
+      return { data: this.singleMode === "none" ? [row] : row, error: null };
     }
     if (this.mode === "update") {
       const rows = this.matching();
       rows.forEach((r) => Object.assign(r, this.payload));
-      return { data: this.single === "none" ? rows : (rows[0] ?? null), error: null };
+      return { data: this.singleMode === "none" ? rows : (rows[0] ?? null), error: null };
     }
     const rows = this.matching();
-    if (this.single === "maybe") return { data: rows[0] ?? null, error: null };
-    if (this.single === "one") {
+    if (this.singleMode === "maybe") return { data: rows[0] ?? null, error: null };
+    if (this.singleMode === "one") {
       if (rows.length !== 1)
         return { data: null, error: { message: "expected exactly one row" } };
       return { data: rows[0], error: null };
@@ -144,11 +143,6 @@ class Query implements PromiseLike<{ data: any; error: any }> {
     return Promise.resolve(this.run()).then(onfulfilled, onrejected);
   }
 }
-
-// `single` is a reserved-ish name on the class above; expose it properly here.
-(Query.prototype as any).single = function single(this: any) {
-  return this.singleRow();
-};
 
 export function createFakeSupabase(seed: Tables = {}) {
   const db: Tables = JSON.parse(JSON.stringify(seed));
