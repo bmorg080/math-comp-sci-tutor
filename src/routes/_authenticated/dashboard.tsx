@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { getMyAccountOverview, ensureMyAccount } from "@/lib/account.functions";
+import { getPublicHomeData } from "@/lib/public-data.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,6 +47,11 @@ function Dashboard() {
     queryKey: ["account-overview"],
     queryFn: () => fetchOverview(),
   });
+
+  const fetchHome = useServerFn(getPublicHomeData);
+  const { data: home } = useQuery({ queryKey: ["public-home"], queryFn: () => fetchHome() });
+  const bundleSize = home?.settings?.bundle_size ?? 5;
+  const bundleDiscountPct = home?.settings?.bundle_discount_pct ?? 10;
 
   // Backfill for users whose signup happened before ensureMyAccount ran (e.g. email-confirmation flow).
   useEffect(() => {
@@ -153,12 +159,16 @@ function Dashboard() {
                       <tr>
                         <th className="px-4 py-3">Subject</th>
                         <th className="px-4 py-3">Price per hour</th>
-                        <th className="px-4 py-3">Pack of 5 (10% off)</th>
+                        <th className="px-4 py-3">
+                          Pack of {bundleSize} ({bundleDiscountPct}% off)
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
                       {data.subjects.map((s) => {
-                        const bundle = Math.round(s.effective_price_cents * 5 * 0.9);
+                        const bundle = Math.round(
+                          s.effective_price_cents * bundleSize * (1 - bundleDiscountPct / 100),
+                        );
                         return (
                           <tr key={s.id} className="border-b last:border-b-0">
                             <td className="px-4 py-3 font-medium">
@@ -190,6 +200,8 @@ function Dashboard() {
           onOpenChange={setBuyOpen}
           subjects={data.subjects}
           trialSubject={data.trialSubject}
+          bundleSize={bundleSize}
+          bundleDiscountPct={bundleDiscountPct}
         />
       )}
     </div>
