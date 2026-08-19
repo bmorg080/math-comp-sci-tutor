@@ -32,6 +32,12 @@ describe("isCreditUsable", () => {
       isCreditUsable(credit({ id: "c2", expires_at: "2026-01-10T12:00:00.001Z" }), NOW),
     ).toBe(true);
   });
+
+  it("treats an unparseable expiry as unusable, not a crash", () => {
+    expect(isCreditUsable(credit({ id: "c1", expires_at: "not-a-date" }), NOW)).toBe(false);
+  });
+});
+
 });
 
 describe("pickCreditToConsume", () => {
