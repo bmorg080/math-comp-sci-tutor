@@ -13,6 +13,7 @@ import { Route as AvailabilityRouteImport } from './routes/availability'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiMigratePricesRouteImport } from './routes/api/migrate-prices'
 import { Route as AuthenticatedLessonsRouteImport } from './routes/_authenticated/lessons'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedBookRouteImport } from './routes/_authenticated/book'
@@ -38,6 +39,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMigratePricesRoute = ApiMigratePricesRouteImport.update({
+  id: '/api/migrate-prices',
+  path: '/api/migrate-prices',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedLessonsRoute = AuthenticatedLessonsRouteImport.update({
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/book': typeof AuthenticatedBookRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/lessons': typeof AuthenticatedLessonsRoute
+  '/api/migrate-prices': typeof ApiMigratePricesRoute
   '/api/public/hooks/lesson-reminders': typeof ApiPublicHooksLessonRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -99,6 +106,7 @@ export interface FileRoutesByTo {
   '/book': typeof AuthenticatedBookRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/lessons': typeof AuthenticatedLessonsRoute
+  '/api/migrate-prices': typeof ApiMigratePricesRoute
   '/api/public/hooks/lesson-reminders': typeof ApiPublicHooksLessonRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -113,6 +121,7 @@ export interface FileRoutesById {
   '/_authenticated/book': typeof AuthenticatedBookRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/lessons': typeof AuthenticatedLessonsRoute
+  '/api/migrate-prices': typeof ApiMigratePricesRoute
   '/api/public/hooks/lesson-reminders': typeof ApiPublicHooksLessonRemindersRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
@@ -127,6 +136,7 @@ export interface FileRouteTypes {
     | '/book'
     | '/dashboard'
     | '/lessons'
+    | '/api/migrate-prices'
     | '/api/public/hooks/lesson-reminders'
     | '/api/public/payments/webhook'
     | '/lovable/email/transactional/preview'
@@ -139,6 +149,7 @@ export interface FileRouteTypes {
     | '/book'
     | '/dashboard'
     | '/lessons'
+    | '/api/migrate-prices'
     | '/api/public/hooks/lesson-reminders'
     | '/api/public/payments/webhook'
     | '/lovable/email/transactional/preview'
@@ -152,6 +163,7 @@ export interface FileRouteTypes {
     | '/_authenticated/book'
     | '/_authenticated/dashboard'
     | '/_authenticated/lessons'
+    | '/api/migrate-prices'
     | '/api/public/hooks/lesson-reminders'
     | '/api/public/payments/webhook'
     | '/lovable/email/transactional/preview'
@@ -162,6 +174,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   AvailabilityRoute: typeof AvailabilityRoute
+  ApiMigratePricesRoute: typeof ApiMigratePricesRoute
   ApiPublicHooksLessonRemindersRoute: typeof ApiPublicHooksLessonRemindersRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
@@ -195,6 +208,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/migrate-prices': {
+      id: '/api/migrate-prices'
+      path: '/api/migrate-prices'
+      fullPath: '/api/migrate-prices'
+      preLoaderRoute: typeof ApiMigratePricesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/lessons': {
@@ -271,6 +291,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   AvailabilityRoute: AvailabilityRoute,
+  ApiMigratePricesRoute: ApiMigratePricesRoute,
   ApiPublicHooksLessonRemindersRoute: ApiPublicHooksLessonRemindersRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
