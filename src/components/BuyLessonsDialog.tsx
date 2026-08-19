@@ -165,9 +165,9 @@ export function BuyLessonsDialog({
                 className="relative rounded-lg border-2 border-primary bg-card p-4 text-left transition hover:shadow-sm disabled:opacity-50"
               >
                 <div className="absolute right-3 top-3 rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
-                  Save 10%
+                  Save {bundleDiscountPct}%
                 </div>
-                <div className="text-sm text-muted-foreground">Pack of 5</div>
+                <div className="text-sm text-muted-foreground">Pack of {bundleSize}</div>
                 <div className="mt-1 text-2xl font-semibold">
                   ${(pack5Cents / 100).toFixed(2)}
                 </div>
