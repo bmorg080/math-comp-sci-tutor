@@ -172,7 +172,7 @@ export function BuyLessonsDialog({
                   ${(pack5Cents / 100).toFixed(2)}
                 </div>
                 <div className="mt-1 text-xs text-muted-foreground">
-                  5 credits • ${(pack5Cents / bundleSize / 100).toFixed(2)}/hr
+                  {bundleSize} credits • ${(pack5Cents / bundleSize / 100).toFixed(2)}/hr
                 </div>
               </button>
             </div>
