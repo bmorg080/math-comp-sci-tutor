@@ -53,7 +53,7 @@ export function BuyLessonsDialog({
 
   const subject = subjects.find((s) => s.id === subjectId);
   const singleCents = subject?.effective_price_cents ?? 0;
-  const pack5Cents = Math.round(singleCents * 5 * 0.95);
+  const pack5Cents = Math.round(singleCents * 5 * 0.9);
 
   const buyMut = useMutation({
     mutationFn: async (opts: { subjectId: string; kind: "single" | "pack5" | "trial" }) => {
@@ -88,7 +88,7 @@ export function BuyLessonsDialog({
         <DialogHeader>
           <DialogTitle>Buy lesson credits</DialogTitle>
           <DialogDescription>
-            Credits expire 9 months after purchase. A pack of 5 saves 5% vs. single lessons.
+            Credits expire 9 months after purchase. A pack of 5 saves 10% vs. single lessons.
           </DialogDescription>
         </DialogHeader>
 
@@ -161,7 +161,7 @@ export function BuyLessonsDialog({
                 className="relative rounded-lg border-2 border-primary bg-card p-4 text-left transition hover:shadow-sm disabled:opacity-50"
               >
                 <div className="absolute right-3 top-3 rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
-                  Save 5%
+                  Save 10%
                 </div>
                 <div className="text-sm text-muted-foreground">Pack of 5</div>
                 <div className="mt-1 text-2xl font-semibold">
