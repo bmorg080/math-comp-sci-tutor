@@ -38,7 +38,7 @@ describe("isCreditUsable", () => {
   });
 });
 
-});
+
 
 describe("pickCreditToConsume", () => {
   it("burns the soonest-expiring usable credit first", () => {
