@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { cancelLesson, rescheduleLesson } from "@/lib/lessons.core";
 
 export const listMyLessons = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -50,50 +51,9 @@ export const cancelMyLesson = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    const { data: member } = await supabase
-      .from("account_members")
-      .select("account_id")
-      .eq("user_id", userId)
-      .maybeSingle();
-    if (!member?.account_id) throw new Error("No account found");
-
-    const { data: lesson } = await supabase
-      .from("lessons")
-      .select("id, account_id, starts_at, status, credit_id, google_event_id")
-      .eq("id", data.lessonId)
-      .maybeSingle();
-    if (!lesson || lesson.account_id !== member.account_id) throw new Error("Lesson not found");
-    if (lesson.status !== "scheduled") throw new Error("Lesson is not scheduled");
-
-    const { data: settings } = await supabase
-      .from("settings")
-      .select("cancellation_hours")
-      .eq("id", 1)
-      .maybeSingle();
-    const cancellationHours = settings?.cancellation_hours ?? 24;
-
-    const hoursUntil = (new Date(lesson.starts_at).getTime() - Date.now()) / (1000 * 60 * 60);
-    const refundEligible = hoursUntil >= cancellationHours;
-    const reasonSuffix = refundEligible ? "" : " [late cancel — no refund]";
-
-    const { error: updErr } = await supabase
-      .from("lessons")
-      .update({
-        status: "cancelled",
-        cancelled_at: new Date().toISOString(),
-        cancelled_by: userId,
-        cancellation_reason: (data.reason ?? "") + reasonSuffix || null,
-      })
-      .eq("id", lesson.id);
-    if (updErr) throw new Error(updErr.message);
-
-    // Refund credit only when eligible
-    if (refundEligible && lesson.credit_id) {
-      await supabase
-        .from("credits")
-        .update({ consumed_lesson_id: null })
-        .eq("id", lesson.credit_id);
-    }
+    // Ownership, status, refund policy and the DB writes live in lessons.core.ts
+    // so they can be unit tested; only side effects remain here.
+    const { lesson, refunded: refundEligible } = await cancelLesson(supabase, userId, data);
 
     // Google Calendar sends the cancellation notice; suppress Lovable email if it succeeds.
     let googleCancelled = false;
@@ -139,56 +99,11 @@ export const rescheduleMyLesson = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    const { data: member } = await supabase
-      .from("account_members")
-      .select("account_id")
-      .eq("user_id", userId)
-      .maybeSingle();
-    if (!member?.account_id) throw new Error("No account found");
-
-    const { data: lesson } = await supabase
-      .from("lessons")
-      .select("id, account_id, starts_at, status, google_event_id")
-      .eq("id", data.lessonId)
-      .maybeSingle();
-    if (!lesson || lesson.account_id !== member.account_id) throw new Error("Lesson not found");
-    if (lesson.status !== "scheduled") throw new Error("Only scheduled lessons can be rescheduled");
-
-    const { data: settings } = await supabase
-      .from("settings")
-      .select("cancellation_hours")
-      .eq("id", 1)
-      .maybeSingle();
-    const cancellationHours = settings?.cancellation_hours ?? 24;
-    const hoursUntil = (new Date(lesson.starts_at).getTime() - Date.now()) / 3600000;
-    if (hoursUntil < cancellationHours) {
-      throw new Error(
-        `Lessons can only be rescheduled at least ${cancellationHours} hours in advance. Please contact your tutor.`,
-      );
-    }
-
-    const newStart = new Date(data.startsAtISO);
-    if (isNaN(newStart.getTime())) throw new Error("Invalid time");
-    if (newStart.getTime() < Date.now() + 3600000) {
-      throw new Error("New time must be at least 1 hour from now");
-    }
-
-    // Conflict check
-    const { data: conflict } = await supabase
-      .from("lessons")
-      .select("id")
-      .in("status", ["scheduled", "completed"])
-      .eq("starts_at", newStart.toISOString())
-      .neq("id", lesson.id)
-      .maybeSingle();
-    if (conflict) throw new Error("That time was just booked. Please pick another.");
-
-    const previousStartsAtISO = lesson.starts_at;
-    const { error } = await supabase
-      .from("lessons")
-      .update({ starts_at: newStart.toISOString(), reminder_sent_at: null })
-      .eq("id", lesson.id);
-    if (error) throw new Error(error.message);
+    const { lesson, previousStartsAtISO, newStartsAtISO } = await rescheduleLesson(
+      supabase,
+      userId,
+      data,
+    );
 
     // Update Google Calendar event; Google notifies attendees. If it succeeds,
     // skip the Lovable reschedule email.
@@ -214,7 +129,7 @@ export const rescheduleMyLesson = createServerFn({ method: "POST" })
           supabaseAdmin: supabase as any,
           lessonId: lesson.id,
           kind: "rescheduled",
-          startsAtISO: newStart.toISOString(),
+          startsAtISO: newStartsAtISO,
           previousStartsAtISO,
         });
       } catch (e) {
