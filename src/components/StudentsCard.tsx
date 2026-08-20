@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { addStudent, updateStudent } from "@/lib/students.functions";
+import { addStudent, updateStudent, deleteStudent } from "@/lib/students.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { GraduationCap, Mail, Pencil, Plus } from "lucide-react";
+import { GraduationCap, Mail, Pencil, Plus, Trash2 } from "lucide-react";
 
 interface Student {
   id: string;
@@ -28,6 +28,8 @@ export function StudentsCard({ students }: { students: Student[] }) {
   const qc = useQueryClient();
   const addFn = useServerFn(addStudent);
   const updateFn = useServerFn(updateStudent);
+  const deleteFn = useServerFn(deleteStudent);
+  const [removingId, setRemovingId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Student | null>(null);
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
