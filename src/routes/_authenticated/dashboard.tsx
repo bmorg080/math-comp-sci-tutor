@@ -4,14 +4,18 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { getMyAccountOverview, ensureMyAccount } from "@/lib/account.functions";
 import { getPublicHomeData } from "@/lib/public-data.functions";
+import { syncMyPurchases } from "@/lib/billing.functions";
+import { getStripeEnvironment } from "@/lib/stripe";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Coins, LogOut, ShieldCheck, Users, BookOpen } from "lucide-react";
+import { CalendarDays, Coins, LogOut, ShieldCheck, Users, BookOpen, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BuyLessonsDialog } from "@/components/BuyLessonsDialog";
 import { StudentsCard } from "@/components/StudentsCard";
+import { BillingCard } from "@/components/BillingCard";
+import { AccountSettingsDialog } from "@/components/AccountSettingsDialog";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -27,21 +31,41 @@ function Dashboard() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [buyOpen, setBuyOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const reconcile = useServerFn(syncMyPurchases);
 
-  // Refresh on return from Stripe checkout
+  // Refresh on return from Stripe checkout, then reconcile against Stripe in
+  // case the webhook is delayed or never arrives.
   useEffect(() => {
     const url = new URL(window.location.href);
-    if (url.searchParams.get("purchase") === "success") {
-      toast.success("Payment received! Credits will appear shortly.");
-      url.searchParams.delete("purchase");
-      window.history.replaceState({}, "", url.toString());
-      // Poll a couple of times for webhook-created credits
-      const tries = [1000, 3000, 6000];
-      tries.forEach((ms) =>
-        setTimeout(() => qc.invalidateQueries({ queryKey: ["account-overview"] }), ms),
-      );
-    }
-  }, [qc]);
+    if (url.searchParams.get("purchase") !== "success") return;
+    toast.success("Payment received! Adding your credits…");
+    url.searchParams.delete("purchase");
+    window.history.replaceState({}, "", url.toString());
+
+    const refresh = () => {
+      qc.invalidateQueries({ queryKey: ["account-overview"] });
+      qc.invalidateQueries({ queryKey: ["my-billing"] });
+    };
+    const timers = [1000, 3000].map((ms) => setTimeout(refresh, ms));
+
+    // Safety net: pull paid sessions straight from Stripe and grant anything missing.
+    const fallback = setTimeout(async () => {
+      try {
+        const res = await reconcile({ data: { environment: getStripeEnvironment() } });
+        if (res.granted > 0) toast.success(`${res.granted} credit(s) added to your account.`);
+      } catch {
+        /* silent — the webhook may still land */
+      } finally {
+        refresh();
+      }
+    }, 5000);
+
+    return () => {
+      timers.forEach(clearTimeout);
+      clearTimeout(fallback);
+    };
+  }, [qc, reconcile]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["account-overview"],
@@ -52,6 +76,7 @@ function Dashboard() {
   const { data: home } = useQuery({ queryKey: ["public-home"], queryFn: () => fetchHome() });
   const bundleSize = home?.settings?.bundle_size ?? 5;
   const bundleDiscountPct = home?.settings?.bundle_discount_pct ?? 10;
+  const creditExpiryMonths = home?.settings?.credit_expiry_months ?? 9;
 
   // Backfill for users whose signup happened before ensureMyAccount ran (e.g. email-confirmation flow).
   useEffect(() => {
@@ -127,7 +152,11 @@ function Dashboard() {
             <div className="grid gap-4 sm:grid-cols-3">
               <StatCard icon={<Coins className="h-5 w-5" />} label="Available credits" value={data.credits.toString()} />
               <StatCard icon={<Users className="h-5 w-5" />} label="Students" value={data.students.length.toString()} />
-              <StatCard icon={<CalendarDays className="h-5 w-5" />} label="Upcoming lessons" value="0" />
+              <StatCard
+                icon={<CalendarDays className="h-5 w-5" />}
+                label="Upcoming lessons"
+                value={(data.upcomingLessons ?? 0).toString()}
+              />
             </div>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -139,7 +168,21 @@ function Dashboard() {
               <Button size="lg" variant="outline" onClick={() => setBuyOpen(true)}>
                 <BookOpen className="h-4 w-4" /> Buy credits
               </Button>
+              <Button size="lg" variant="ghost" onClick={() => setSettingsOpen(true)}>
+                <Settings className="h-4 w-4" /> Account settings
+              </Button>
             </div>
+            {data.nextCreditExpiry && (
+              <p className="mt-3 text-sm text-muted-foreground">
+                Your next credit expires on{" "}
+                {new Date(data.nextCreditExpiry).toLocaleDateString(undefined, {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+                .
+              </p>
+            )}
 
             <section className="mt-10">
               <StudentsCard students={data.students} />
@@ -190,19 +233,32 @@ function Dashboard() {
               </Card>
             </section>
 
+            <section className="mt-10">
+              <BillingCard />
+            </section>
           </>
         )}
       </main>
 
       {data?.account && (
-        <BuyLessonsDialog
-          open={buyOpen}
-          onOpenChange={setBuyOpen}
-          subjects={data.subjects}
-          trialSubject={data.trialSubject}
-          bundleSize={bundleSize}
-          bundleDiscountPct={bundleDiscountPct}
-        />
+        <>
+          <BuyLessonsDialog
+            open={buyOpen}
+            onOpenChange={setBuyOpen}
+            subjects={data.subjects}
+            trialSubject={data.trialSubject}
+            bundleSize={bundleSize}
+            bundleDiscountPct={bundleDiscountPct}
+            creditExpiryMonths={creditExpiryMonths}
+          />
+          <AccountSettingsDialog
+            key={`${data.account.display_name}-${data.account.timezone}`}
+            open={settingsOpen}
+            onOpenChange={setSettingsOpen}
+            displayName={data.account.display_name}
+            timezone={data.account.timezone}
+          />
+        </>
       )}
     </div>
   );

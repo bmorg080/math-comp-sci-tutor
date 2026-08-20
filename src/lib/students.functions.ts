@@ -75,3 +75,33 @@ export const updateStudent = createServerFn({ method: "POST" })
     if (!row) throw new Error("Student not found");
     return row;
   });
+
+export const deleteStudent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: member } = await supabase
+      .from("account_members")
+      .select("account_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!member?.account_id) throw new Error("No account");
+
+    // Keep history intact: a student attached to lessons is not deletable.
+    const { count } = await supabase
+      .from("lessons")
+      .select("*", { count: "exact", head: true })
+      .eq("student_id", data.id);
+    if ((count ?? 0) > 0) {
+      throw new Error("This student has lessons on record and can't be removed.");
+    }
+
+    const { error } = await supabase
+      .from("students")
+      .delete()
+      .eq("id", data.id)
+      .eq("account_id", member.account_id);
+    if (error) throw new Error(error.message);
+    return { deleted: true };
+  });

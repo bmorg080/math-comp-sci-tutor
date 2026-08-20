@@ -94,6 +94,7 @@ function SignInForm({ onDone }: { onDone: () => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -104,6 +105,18 @@ function SignInForm({ onDone }: { onDone: () => void }) {
     toast.success("Welcome back!");
     onDone();
   }
+
+  async function onForgotPassword() {
+    if (!email.trim()) return toast.error("Enter your email first, then tap reset.");
+    setResetting(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setResetting(false);
+    if (error) return toast.error(error.message);
+    toast.success("Password reset link sent — check your email.");
+  }
+
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
@@ -118,6 +131,14 @@ function SignInForm({ onDone }: { onDone: () => void }) {
       <Button type="submit" className="w-full" disabled={busy}>
         {busy ? "Signing in…" : "Sign in"}
       </Button>
+      <button
+        type="button"
+        onClick={onForgotPassword}
+        disabled={resetting}
+        className="w-full text-center text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+      >
+        {resetting ? "Sending reset link…" : "Forgot your password?"}
+      </button>
     </form>
   );
 }

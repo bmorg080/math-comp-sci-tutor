@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { addStudent, updateStudent } from "@/lib/students.functions";
+import { addStudent, updateStudent, deleteStudent } from "@/lib/students.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { GraduationCap, Mail, Pencil, Plus } from "lucide-react";
+import { GraduationCap, Mail, Pencil, Plus, Trash2 } from "lucide-react";
 
 interface Student {
   id: string;
@@ -28,6 +28,8 @@ export function StudentsCard({ students }: { students: Student[] }) {
   const qc = useQueryClient();
   const addFn = useServerFn(addStudent);
   const updateFn = useServerFn(updateStudent);
+  const deleteFn = useServerFn(deleteStudent);
+  const [removingId, setRemovingId] = useState<string | null>(null);
   const [editing, setEditing] = useState<Student | null>(null);
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -86,6 +88,20 @@ export function StudentsCard({ students }: { students: Student[] }) {
     }
   }
 
+  async function remove(s: Student) {
+    if (!window.confirm(`Remove ${s.name} from your account?`)) return;
+    setRemovingId(s.id);
+    try {
+      await deleteFn({ data: { id: s.id } });
+      qc.invalidateQueries({ queryKey: ["account-overview"] });
+      toast.success("Student removed");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to remove student");
+    } finally {
+      setRemovingId(null);
+    }
+  }
+
   const open = editing !== null || adding;
 
   return (
@@ -119,9 +135,21 @@ export function StudentsCard({ students }: { students: Student[] }) {
                       )}
                     </p>
                   </div>
-                  <Button size="sm" variant="ghost" onClick={() => openEdit(s)}>
-                    <Pencil className="h-4 w-4" /> Edit
-                  </Button>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button size="sm" variant="ghost" onClick={() => openEdit(s)}>
+                      <Pencil className="h-4 w-4" /> Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-muted-foreground hover:text-destructive"
+                      disabled={removingId === s.id}
+                      onClick={() => remove(s)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Remove {s.name}</span>
+                    </Button>
+                  </div>
                 </li>
               ))}
             </ul>

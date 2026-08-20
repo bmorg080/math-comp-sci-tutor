@@ -26,7 +26,7 @@ export const Route = createFileRoute("/api/public/hooks/lesson-reminders")({
         const { data: lessons, error } = await supabaseAdmin
           .from("lessons")
           .select(
-            "id, starts_at, account_id, student_id, subject_id, students(name, email), subjects(name), accounts(timezone, user_id)",
+            "id, starts_at, account_id, student_id, subject_id, students(name, email), subjects(name), accounts(display_name, timezone)",
           )
           .eq("status", "scheduled")
           .is("reminder_sent_at", null)
@@ -75,17 +75,16 @@ export const Route = createFileRoute("/api/public/hooks/lesson-reminders")({
           const subjectName = subject?.name ?? "Lesson";
           const customerTZ = account?.timezone ?? tutorTZ;
 
-          // Look up parent email
+          // Look up parent email from the account membership (parent first)
           let parentEmail: string | undefined;
-          let parentName = "there";
-          if (account?.user_id) {
-            const { data: userRes } =
-              await supabaseAdmin.auth.admin.getUserById(account.user_id);
-            parentEmail = userRes?.user?.email ?? undefined;
-            parentName =
-              (userRes?.user?.user_metadata as { full_name?: string } | undefined)
-                ?.full_name ?? "there";
-          }
+          const parentName = account?.display_name ?? "there";
+          const { data: members } = await supabaseAdmin
+            .from("account_members")
+            .select("email, member_role")
+            .eq("account_id", l.account_id);
+          const parentMember =
+            (members ?? []).find((m: any) => m.member_role === "parent") ?? (members ?? [])[0];
+          parentEmail = (parentMember as any)?.email ?? undefined;
 
           try {
             const customerTemplateData = {
