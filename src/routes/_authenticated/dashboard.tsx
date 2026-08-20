@@ -31,21 +31,41 @@ function Dashboard() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [buyOpen, setBuyOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const reconcile = useServerFn(syncMyPurchases);
 
-  // Refresh on return from Stripe checkout
+  // Refresh on return from Stripe checkout, then reconcile against Stripe in
+  // case the webhook is delayed or never arrives.
   useEffect(() => {
     const url = new URL(window.location.href);
-    if (url.searchParams.get("purchase") === "success") {
-      toast.success("Payment received! Credits will appear shortly.");
-      url.searchParams.delete("purchase");
-      window.history.replaceState({}, "", url.toString());
-      // Poll a couple of times for webhook-created credits
-      const tries = [1000, 3000, 6000];
-      tries.forEach((ms) =>
-        setTimeout(() => qc.invalidateQueries({ queryKey: ["account-overview"] }), ms),
-      );
-    }
-  }, [qc]);
+    if (url.searchParams.get("purchase") !== "success") return;
+    toast.success("Payment received! Adding your credits…");
+    url.searchParams.delete("purchase");
+    window.history.replaceState({}, "", url.toString());
+
+    const refresh = () => {
+      qc.invalidateQueries({ queryKey: ["account-overview"] });
+      qc.invalidateQueries({ queryKey: ["my-billing"] });
+    };
+    const timers = [1000, 3000].map((ms) => setTimeout(refresh, ms));
+
+    // Safety net: pull paid sessions straight from Stripe and grant anything missing.
+    const fallback = setTimeout(async () => {
+      try {
+        const res = await reconcile({ data: { environment: getStripeEnvironment() } });
+        if (res.granted > 0) toast.success(`${res.granted} credit(s) added to your account.`);
+      } catch {
+        /* silent — the webhook may still land */
+      } finally {
+        refresh();
+      }
+    }, 5000);
+
+    return () => {
+      timers.forEach(clearTimeout);
+      clearTimeout(fallback);
+    };
+  }, [qc, reconcile]);
 
   const { data, isLoading } = useQuery({
     queryKey: ["account-overview"],
@@ -56,6 +76,7 @@ function Dashboard() {
   const { data: home } = useQuery({ queryKey: ["public-home"], queryFn: () => fetchHome() });
   const bundleSize = home?.settings?.bundle_size ?? 5;
   const bundleDiscountPct = home?.settings?.bundle_discount_pct ?? 10;
+  const creditExpiryMonths = home?.settings?.credit_expiry_months ?? 9;
 
   // Backfill for users whose signup happened before ensureMyAccount ran (e.g. email-confirmation flow).
   useEffect(() => {
