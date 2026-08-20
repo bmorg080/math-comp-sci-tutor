@@ -467,7 +467,42 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      public_home_settings: {
+        Row: {
+          bundle_discount_pct: number | null
+          bundle_size: number | null
+          cancellation_hours: number | null
+          credit_expiry_months: number | null
+          id: number | null
+          tutor_bio: string | null
+          tutor_name: string | null
+          tutor_timezone: string | null
+          weekly_availability: Json | null
+        }
+        Insert: {
+          bundle_discount_pct?: number | null
+          bundle_size?: number | null
+          cancellation_hours?: number | null
+          credit_expiry_months?: number | null
+          id?: number | null
+          tutor_bio?: string | null
+          tutor_name?: string | null
+          tutor_timezone?: string | null
+          weekly_availability?: Json | null
+        }
+        Update: {
+          bundle_discount_pct?: number | null
+          bundle_size?: number | null
+          cancellation_hours?: number | null
+          credit_expiry_months?: number | null
+          id?: number | null
+          tutor_bio?: string | null
+          tutor_name?: string | null
+          tutor_timezone?: string | null
+          weekly_availability?: Json | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       current_account_id: { Args: never; Returns: string }
