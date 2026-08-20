@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS settings_select_authenticated ON public.settings;

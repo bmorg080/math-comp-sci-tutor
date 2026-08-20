@@ -471,6 +471,20 @@ export type Database = {
     }
     Functions: {
       current_account_id: { Args: never; Returns: string }
+      get_public_settings: {
+        Args: never
+        Returns: {
+          bundle_discount_pct: number
+          bundle_size: number
+          cancellation_hours: number
+          credit_expiry_months: number
+          id: number
+          tutor_bio: string
+          tutor_name: string
+          tutor_timezone: string
+          weekly_availability: Json
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

@@ -11,7 +11,10 @@ export const listOpenSlots = createServerFn({ method: "GET" })
   )
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    const { data: settings } = await supabase
+    // Settings holds the tutor's email/zoom link, so read it through the
+    // service role (lets us drop the authenticated settings-read policy).
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: settings } = await supabaseAdmin
       .from("settings")
       .select("tutor_timezone, weekly_availability")
       .eq("id", 1)
@@ -24,7 +27,10 @@ export const listOpenSlots = createServerFn({ method: "GET" })
     const now = new Date();
     const horizon = new Date(now.getTime() + data.days * 24 * 60 * 60 * 1000);
 
-    const { data: booked } = await supabase
+    // Read booked lessons globally so availability reflects every account's
+    // bookings (matches the public browse route and the unique index on
+    // scheduled starts_at), not just this customer's own lessons.
+    const { data: booked } = await supabaseAdmin
       .from("lessons")
       .select("starts_at")
       .in("status", ["scheduled", "completed"])
@@ -56,9 +62,12 @@ export const bookLesson = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    // All the account / conflict / credit rules live in booking.core.ts so they
-    // can be unit tested; only the side effects below stay here.
-    const result = await createBooking(supabase, userId, data);
+    // Sensitive writes (lesson insert + credit consume) run through the service
+    // role so user-side RLS write policies can stay admin-only. This blocks
+    // direct Data API tampering with price/status/credits. createBooking still
+    // validates account + student ownership internally.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const result = await createBooking(supabaseAdmin as any, userId, data);
     if (!result.ok) {
       return { ok: false as const, needsPayment: true, priceCents: result.priceCents };
     }
@@ -79,7 +88,7 @@ export const bookLesson = createServerFn({ method: "POST" })
       if (payload) {
         const eventId = await createCalendarEvent(payload);
         if (eventId) {
-          await supabase
+          await supabaseAdmin
             .from("lessons")
             .update({ google_event_id: eventId })
             .eq("id", lesson.id);
@@ -97,7 +106,7 @@ export const bookLesson = createServerFn({ method: "POST" })
         const { sendTemplateEmail } = await import("@/lib/email-templates/send-email");
         const [{ data: settings }, { data: studentRow }, { data: subjectRow }, { data: accountRow }, { data: authUser }] =
           await Promise.all([
-            supabase
+            supabaseAdmin
               .from("settings")
               .select("zoom_link, tutor_name, tutor_email, tutor_timezone")
               .eq("id", 1)

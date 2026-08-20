@@ -48,10 +48,21 @@ export const listPublicOpenSlots = createServerFn({ method: "GET" })
   )
   .handler(async ({ data }) => {
     const sb = createPublicClient();
-    const { data: settings } = await sb
-      .from("settings")
-      .select("tutor_timezone, weekly_availability")
-      .eq("id", 1)
+    // Read settings through the SECURITY DEFINER RPC so anon never touches the
+    // settings table (which holds tutor_email/zoom_link).
+    const { data: settings } = await (
+      sb as unknown as {
+        rpc: (name: string) => {
+          maybeSingle: () => Promise<{
+            data: {
+              tutor_timezone: string;
+              weekly_availability: AvailabilityRule[] | null;
+            } | null;
+          }>;
+        };
+      }
+    )
+      .rpc("get_public_settings")
       .maybeSingle();
     if (!settings) return { slots: [] as string[], tutorTimezone: "UTC" };
 
