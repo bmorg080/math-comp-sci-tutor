@@ -11,7 +11,10 @@ export const listOpenSlots = createServerFn({ method: "GET" })
   )
   .handler(async ({ data, context }) => {
     const { supabase } = context;
-    const { data: settings } = await supabase
+    // Settings holds the tutor's email/zoom link, so read it through the
+    // service role (lets us drop the authenticated settings-read policy).
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: settings } = await supabaseAdmin
       .from("settings")
       .select("tutor_timezone, weekly_availability")
       .eq("id", 1)
@@ -24,7 +27,10 @@ export const listOpenSlots = createServerFn({ method: "GET" })
     const now = new Date();
     const horizon = new Date(now.getTime() + data.days * 24 * 60 * 60 * 1000);
 
-    const { data: booked } = await supabase
+    // Read booked lessons globally so availability reflects every account's
+    // bookings (matches the public browse route and the unique index on
+    // scheduled starts_at), not just this customer's own lessons.
+    const { data: booked } = await supabaseAdmin
       .from("lessons")
       .select("starts_at")
       .in("status", ["scheduled", "completed"])
@@ -100,7 +106,7 @@ export const bookLesson = createServerFn({ method: "POST" })
         const { sendTemplateEmail } = await import("@/lib/email-templates/send-email");
         const [{ data: settings }, { data: studentRow }, { data: subjectRow }, { data: accountRow }, { data: authUser }] =
           await Promise.all([
-            supabase
+            supabaseAdmin
               .from("settings")
               .select("zoom_link, tutor_name, tutor_email, tutor_timezone")
               .eq("id", 1)

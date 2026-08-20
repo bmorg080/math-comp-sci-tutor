@@ -7,6 +7,9 @@ export const listMyLessons = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
+    // Settings holds tutor email/zoom link — read via the service role so the
+    // authenticated settings-read policy can be dropped.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: member } = await supabase
       .from("account_members")
       .select("account_id")
@@ -22,7 +25,7 @@ export const listMyLessons = createServerFn({ method: "GET" })
       .eq("account_id", member.account_id)
       .order("starts_at", { ascending: false });
 
-    const { data: settings } = await supabase
+    const { data: settings } = await supabaseAdmin
       .from("settings")
       .select("zoom_link, cancellation_hours")
       .eq("id", 1)
@@ -76,7 +79,7 @@ export const cancelMyLesson = createServerFn({ method: "POST" })
       try {
         const { sendLessonUpdateEmails } = await import("@/lib/lesson-emails.server");
         await sendLessonUpdateEmails({
-          supabaseAdmin: supabase as any,
+          supabaseAdmin: supabaseAdmin as any,
           lessonId: lesson.id,
           kind: "cancelled",
           startsAtISO: lesson.starts_at,
@@ -135,7 +138,7 @@ export const rescheduleMyLesson = createServerFn({ method: "POST" })
       try {
         const { sendLessonUpdateEmails } = await import("@/lib/lesson-emails.server");
         await sendLessonUpdateEmails({
-          supabaseAdmin: supabase as any,
+          supabaseAdmin: supabaseAdmin as any,
           lessonId: lesson.id,
           kind: "rescheduled",
           startsAtISO: newStartsAtISO,
