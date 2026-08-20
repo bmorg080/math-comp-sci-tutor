@@ -1,6 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
-import { type StripeEnv, verifyWebhook } from "@/lib/stripe.server";
+import { type StripeEnv, createStripeClient, verifyWebhook } from "@/lib/stripe.server";
+import {
+  grantCreditsForSession,
+  voidCreditsForSession,
+  type GrantOutcome,
+} from "@/lib/credits.server";
 
 let _supabase: ReturnType<typeof createClient> | null = null;
 function getSupabase() {
@@ -13,87 +18,74 @@ function getSupabase() {
   return _supabase;
 }
 
-// 9-month credit expiry
-const CREDIT_EXPIRY_MS = 9 * 30 * 24 * 60 * 60 * 1000;
+type WebhookOutcome = GrantOutcome | { status: "error"; creditsInserted: number; note?: string };
 
-type WebhookOutcome = {
-  status: "processed" | "duplicate" | "ignored" | "error";
-  creditsInserted: number;
-  note?: string;
-};
+/**
+ * A refund or dispute on a charge voids the unused credits from the checkout
+ * session that produced them. Credits already spent on a delivered lesson stay
+ * put and are flagged in the webhook log for manual follow-up.
+ */
+async function handleRefund(
+  charge: any,
+  env: StripeEnv,
+  kindLabel: string,
+): Promise<WebhookOutcome> {
+  const paymentIntent =
+    typeof charge?.payment_intent === "string"
+      ? charge.payment_intent
+      : charge?.payment_intent?.id;
+  if (!paymentIntent) {
+    return { status: "ignored", creditsInserted: 0, note: "no payment_intent on charge" };
+  }
 
-async function handleCheckoutCompleted(session: any): Promise<WebhookOutcome> {
-  const meta = session.metadata ?? {};
-  const accountId: string | undefined = meta.accountId;
-  const subjectName: string | undefined = meta.subjectName;
-  const kind: string | undefined = meta.kind;
-  const qty = Number(meta.creditQuantity ?? 0);
-
-  if (!accountId || !qty) {
-    return { status: "ignored", creditsInserted: 0, note: "missing metadata" };
+  const stripe = createStripeClient(env);
+  const sessions = await stripe.checkout.sessions.list({
+    payment_intent: paymentIntent,
+    limit: 5,
+  } as any);
+  if (!sessions.data.length) {
+    return { status: "ignored", creditsInserted: 0, note: `no session for ${paymentIntent}` };
   }
 
   const supabase = getSupabase();
-
-  // Secondary idempotency guard — even if the outer event-id guard is bypassed
-  // (e.g. Stripe re-signs the same session under a new event id), we never
-  // insert a second batch of credits for the same checkout session.
-  const { data: existing, error: existingErr } = await supabase
-    .from("credits")
-    .select("id")
-    .eq("stripe_payment_id", session.id)
-    .limit(1);
-  if (existingErr) throw existingErr;
-  if (existing && existing.length > 0) {
-    return {
-      status: "duplicate",
-      creditsInserted: 0,
-      note: `session ${session.id} already granted credits`,
-    };
-  }
-
-  const perCreditCents = Math.round(Number(session.amount_total ?? 0) / qty);
-  const now = new Date();
-  const expiresAt = new Date(now.getTime() + CREDIT_EXPIRY_MS).toISOString();
-  const source =
-    kind === "trial" ? "purchase_single" : kind === "pack5" ? "purchase_bundle" : "purchase_single";
-
-  const rows = Array.from({ length: qty }, () => ({
-    account_id: accountId,
-    source,
-    price_cents_paid: perCreditCents,
-    stripe_payment_id: session.id,
-    purchased_at: now.toISOString(),
-    expires_at: expiresAt,
-    note: subjectName ? `Purchased: ${subjectName}` : null,
-  }));
-
-  const { error } = await (supabase.from("credits") as any).insert(rows);
-  if (error) throw error;
-
-  // Stamp trial_used_at so the trial offer disappears after one purchase.
-  if (kind === "trial") {
-    await (supabase.from("accounts") as any)
-      .update({ trial_used_at: now.toISOString() })
-      .eq("id", accountId);
+  let voided = 0;
+  let alreadyUsed = 0;
+  for (const session of sessions.data) {
+    const res = await voidCreditsForSession(
+      supabase as any,
+      session.id,
+      `${kindLabel} — credit voided`,
+    );
+    voided += res.voided;
+    alreadyUsed += res.alreadyUsed;
   }
 
   return {
     status: "processed",
-    creditsInserted: qty,
-    note: subjectName ?? undefined,
+    creditsInserted: 0,
+    note: `${kindLabel}: voided ${voided} unused credit(s)${alreadyUsed ? `, ${alreadyUsed} already used on a lesson — review manually` : ""}`,
   };
 }
 
-async function processEvent(event: {
-  id: string;
-  type: string;
-  data: { object: any };
-}): Promise<WebhookOutcome> {
+async function processEvent(
+  event: { id: string; type: string; data: { object: any } },
+  env: StripeEnv,
+): Promise<WebhookOutcome> {
   switch (event.type) {
     case "checkout.session.completed":
     case "checkout.session.async_payment_succeeded":
-      return handleCheckoutCompleted(event.data.object);
+      return grantCreditsForSession(getSupabase() as any, event.data.object);
+    case "checkout.session.async_payment_failed":
+    case "checkout.session.expired":
+      return {
+        status: "ignored",
+        creditsInserted: 0,
+        note: `${event.type} — no credits granted`,
+      };
+    case "charge.refunded":
+      return handleRefund(event.data.object, env, "Refunded in Stripe");
+    case "charge.dispute.created":
+      return handleRefund(event.data.object, env, "Payment disputed");
     default:
       return { status: "ignored", creditsInserted: 0, note: "unhandled type" };
   }
@@ -102,15 +94,15 @@ async function processEvent(event: {
 async function handleWebhook(req: Request, env: StripeEnv) {
   const event = await verifyWebhook(req, env);
   const eventId = (event as any).id as string | undefined;
-  const session =
-    event.type.startsWith("checkout.session.") ? event.data.object : null;
+  const session = event.type.startsWith("checkout.session.") ? event.data.object : null;
   const sessionId = session?.id ?? null;
 
   const supabase = getSupabase();
 
-  // Primary idempotency: insert the event row first. The UNIQUE constraint on
-  // event_id makes a duplicate delivery fail here — we short-circuit before
-  // touching credits.
+  // Primary idempotency: claim the event id first. A duplicate delivery of an
+  // event we ALREADY finished (processed_at set) short-circuits here. A row
+  // without processed_at means a previous attempt died mid-flight, so we let
+  // the retry run again — grantCreditsForSession is itself idempotent.
   if (eventId) {
     const { error: insertErr } = await (supabase.from("webhook_events") as any).insert({
       event_id: eventId,
@@ -119,14 +111,24 @@ async function handleWebhook(req: Request, env: StripeEnv) {
       session_id: sessionId,
     });
     if (insertErr) {
-      const code = (insertErr as any).code;
-      if (code === "23505") {
+      if ((insertErr as any).code === "23505") {
+        const { data: prior } = await supabase
+          .from("webhook_events")
+          .select("processed_at")
+          .eq("event_id", eventId)
+          .maybeSingle();
+        if ((prior as any)?.processed_at) {
+          console.log(
+            `[stripe-webhook] duplicate event ignored id=${eventId} type=${event.type} env=${env}`,
+          );
+          return { duplicate: true as const, eventId };
+        }
         console.log(
-          `[stripe-webhook] duplicate event ignored id=${eventId} type=${event.type} env=${env}`,
+          `[stripe-webhook] retrying previously failed event id=${eventId} type=${event.type}`,
         );
-        return { duplicate: true as const, eventId };
+      } else {
+        throw insertErr;
       }
-      throw insertErr;
     }
   }
 
@@ -136,17 +138,13 @@ async function handleWebhook(req: Request, env: StripeEnv) {
 
   let outcome: WebhookOutcome;
   try {
-    outcome = await processEvent(event as any);
+    outcome = await processEvent(event as any, env);
   } catch (err) {
-    console.error(
-      `[stripe-webhook] processing failed id=${eventId} type=${event.type}:`,
-      err,
-    );
+    console.error(`[stripe-webhook] processing failed id=${eventId} type=${event.type}:`, err);
     if (eventId) {
+      // Leave processed_at NULL so Stripe's retry is allowed to run again.
       await (supabase.from("webhook_events") as any)
-        .update({
-          notes: `error: ${(err as Error).message ?? String(err)}`,
-        })
+        .update({ notes: `error: ${(err as Error).message ?? String(err)}` })
         .eq("event_id", eventId);
     }
     throw err;
