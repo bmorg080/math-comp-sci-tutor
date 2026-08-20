@@ -4,14 +4,18 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { getMyAccountOverview, ensureMyAccount } from "@/lib/account.functions";
 import { getPublicHomeData } from "@/lib/public-data.functions";
+import { syncMyPurchases } from "@/lib/billing.functions";
+import { getStripeEnvironment } from "@/lib/stripe";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, Coins, LogOut, ShieldCheck, Users, BookOpen } from "lucide-react";
+import { CalendarDays, Coins, LogOut, ShieldCheck, Users, BookOpen, Settings } from "lucide-react";
 import { useEffect, useState } from "react";
 import { BuyLessonsDialog } from "@/components/BuyLessonsDialog";
 import { StudentsCard } from "@/components/StudentsCard";
+import { BillingCard } from "@/components/BillingCard";
+import { AccountSettingsDialog } from "@/components/AccountSettingsDialog";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
