@@ -86,6 +86,12 @@ export const getMyAccountOverview = createServerFn({ method: "GET" })
         .gt("expires_at", new Date().toISOString()),
       supabase.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle(),
       supabase.from("accounts").select("trial_used_at").eq("id", member.account_id).maybeSingle(),
+      supabase
+        .from("lessons")
+        .select("*", { count: "exact", head: true })
+        .eq("account_id", member.account_id)
+        .eq("status", "scheduled")
+        .gte("starts_at", new Date().toISOString()),
     ]);
 
     // Trial eligibility: never used trial AND account has never purchased any credits.
@@ -113,6 +119,41 @@ export const getMyAccountOverview = createServerFn({ method: "GET" })
       trialSubject,
       trialEligible,
       credits: creditsRes.data?.length ?? 0,
+      upcomingLessons: upcomingRes.count ?? 0,
+      nextCreditExpiry:
+        (creditsRes.data ?? [])
+          .map((c) => c.expires_at)
+          .sort((a, b) => a.localeCompare(b))[0] ?? null,
       isAdmin: !!roleRes.data,
     };
+  });
+
+// Let a parent update their own family profile (name shown on emails, timezone).
+export const updateMyAccount = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { displayName?: string; timezone?: string }) =>
+    z
+      .object({
+        displayName: z.string().trim().min(1).max(120).optional(),
+        timezone: z.string().trim().min(1).max(80).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { data: member } = await supabase
+      .from("account_members")
+      .select("account_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (!member?.account_id) throw new Error("No account");
+
+    const patch: { display_name?: string; timezone?: string } = {};
+    if (data.displayName) patch.display_name = data.displayName;
+    if (data.timezone) patch.timezone = data.timezone;
+    if (Object.keys(patch).length === 0) return { updated: false };
+
+    const { error } = await supabase.from("accounts").update(patch).eq("id", member.account_id);
+    if (error) throw new Error(error.message);
+    return { updated: true };
   });
