@@ -152,7 +152,11 @@ function Dashboard() {
             <div className="grid gap-4 sm:grid-cols-3">
               <StatCard icon={<Coins className="h-5 w-5" />} label="Available credits" value={data.credits.toString()} />
               <StatCard icon={<Users className="h-5 w-5" />} label="Students" value={data.students.length.toString()} />
-              <StatCard icon={<CalendarDays className="h-5 w-5" />} label="Upcoming lessons" value="0" />
+              <StatCard
+                icon={<CalendarDays className="h-5 w-5" />}
+                label="Upcoming lessons"
+                value={(data.upcomingLessons ?? 0).toString()}
+              />
             </div>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -164,7 +168,21 @@ function Dashboard() {
               <Button size="lg" variant="outline" onClick={() => setBuyOpen(true)}>
                 <BookOpen className="h-4 w-4" /> Buy credits
               </Button>
+              <Button size="lg" variant="ghost" onClick={() => setSettingsOpen(true)}>
+                <Settings className="h-4 w-4" /> Account settings
+              </Button>
             </div>
+            {data.nextCreditExpiry && (
+              <p className="mt-3 text-sm text-muted-foreground">
+                Your next credit expires on{" "}
+                {new Date(data.nextCreditExpiry).toLocaleDateString(undefined, {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                })}
+                .
+              </p>
+            )}
 
             <section className="mt-10">
               <StudentsCard students={data.students} />
