@@ -69,7 +69,7 @@ export const getMyAccountOverview = createServerFn({ method: "GET" })
       return { account: null, students: [], subjects: [], credits: 0, isAdmin: false };
     }
 
-    const [studentsRes, subjectsRes, customPricesRes, creditsRes, roleRes, acctRes] = await Promise.all([
+    const [studentsRes, subjectsRes, customPricesRes, creditsRes, roleRes, acctRes, upcomingRes] = await Promise.all([
       supabase.from("students").select("id, name, grade_level, email").eq("account_id", member.account_id),
       supabase
         .from("subjects")
