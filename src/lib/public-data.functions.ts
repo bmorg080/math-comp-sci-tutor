@@ -46,12 +46,10 @@ export const getPublicHomeData = createServerFn({ method: "GET" }).handler(async
       .select("id, name, price_cents, description, sort_order, is_trial")
       .eq("active", true)
       .order("sort_order"),
-    sb
-      .from("settings")
-      .select(
-        "tutor_name, tutor_bio, tutor_timezone, bundle_size, bundle_discount_pct, credit_expiry_months, cancellation_hours, weekly_availability",
-      )
-      .eq("id", 1)
+    // Public settings are read through the SECURITY DEFINER RPC so anonymous
+    // users never touch the settings table (which holds tutor_email/zoom_link).
+    (sb as unknown as { rpc: (name: string) => { maybeSingle: () => Promise<{ data: PublicSettings | null }> } })
+      .rpc("get_public_settings")
       .maybeSingle(),
   ]);
   const all = (subjectsRes.data ?? []) as PublicSubject[];
