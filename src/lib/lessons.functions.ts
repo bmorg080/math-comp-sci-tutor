@@ -51,9 +51,15 @@ export const cancelMyLesson = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
-    // Ownership, status, refund policy and the DB writes live in lessons.core.ts
-    // so they can be unit tested; only side effects remain here.
-    const { lesson, refunded: refundEligible } = await cancelLesson(supabase, userId, data);
+    // DB writes (cancel lesson + refund credit) run through the service role so
+    // user-side RLS write policies can stay admin-only, blocking direct Data API
+    // tampering. cancelLesson validates ownership internally.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { lesson, refunded: refundEligible } = await cancelLesson(
+      supabaseAdmin as any,
+      userId,
+      data,
+    );
 
     // Google Calendar sends the cancellation notice; suppress Lovable email if it succeeds.
     let googleCancelled = false;
@@ -99,8 +105,11 @@ export const rescheduleMyLesson = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
 
+    // DB writes (update starts_at) run through the service role so user-side
+    // RLS write policies can stay admin-only. rescheduleLesson validates ownership.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { lesson, previousStartsAtISO, newStartsAtISO } = await rescheduleLesson(
-      supabase,
+      supabaseAdmin as any,
       userId,
       data,
     );
