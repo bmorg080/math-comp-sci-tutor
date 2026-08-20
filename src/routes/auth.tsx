@@ -131,6 +131,14 @@ function SignInForm({ onDone }: { onDone: () => void }) {
       <Button type="submit" className="w-full" disabled={busy}>
         {busy ? "Signing in…" : "Sign in"}
       </Button>
+      <button
+        type="button"
+        onClick={onForgotPassword}
+        disabled={resetting}
+        className="w-full text-center text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground disabled:opacity-50"
+      >
+        {resetting ? "Sending reset link…" : "Forgot your password?"}
+      </button>
     </form>
   );
 }
