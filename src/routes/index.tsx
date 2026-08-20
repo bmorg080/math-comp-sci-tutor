@@ -28,7 +28,7 @@ function Landing() {
       <header className="border-b bg-surface/80 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <Link to="/" className="font-display text-xl font-semibold text-primary">
-            Tutoring
+            Brian Morgan Tutoring
           </Link>
           <nav className="flex items-center gap-2">
             <Button asChild variant="ghost" size="sm">
@@ -174,7 +174,7 @@ function Landing() {
 
       <footer className="border-t bg-surface/50">
         <div className="mx-auto max-w-6xl px-6 py-8 text-sm text-muted-foreground">
-          © {new Date().getFullYear()} Tutoring. All rights reserved.
+          © {new Date().getFullYear()} Brian Morgan Tutoring. All rights reserved.
         </div>
       </footer>
     </div>

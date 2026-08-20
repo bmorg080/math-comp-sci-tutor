@@ -11,13 +11,13 @@ import { Badge } from "@/components/ui/badge";
 export const Route = createFileRoute("/availability")({
   head: () => ({
     meta: [
-      { title: "Open lesson times — Tutoring" },
+      { title: "Open lesson times — Brian Morgan Tutoring" },
       {
         name: "description",
         content:
           "Browse open 1-hour tutoring slots in your local timezone. Create an account to book a lesson.",
       },
-      { property: "og:title", content: "Open lesson times — Tutoring" },
+      { property: "og:title", content: "Open lesson times — Brian Morgan Tutoring" },
       {
         property: "og:description",
         content: "See when your tutor is available and grab a time that works.",
