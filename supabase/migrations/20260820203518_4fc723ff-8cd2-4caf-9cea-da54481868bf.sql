@@ -1,0 +1,1 @@
+update public.settings set tutor_name='Brian Morgan', tutor_email='brian@brianmorgantutor.com', zoom_link=coalesce(nullif(zoom_link,''),'https://zoom.us/my/brianmorgantutor') where id=1;
