@@ -63,7 +63,7 @@ function AuthPage() {
       <header className="border-b bg-surface">
         <div className="mx-auto max-w-5xl px-6 py-4">
           <Link to="/" className="font-display text-xl font-semibold text-primary">
-            Tutoring
+            Brian Morgan Tutoring
           </Link>
         </div>
       </header>
