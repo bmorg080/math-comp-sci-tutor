@@ -467,45 +467,24 @@ export type Database = {
       }
     }
     Views: {
-      public_home_settings: {
-        Row: {
-          bundle_discount_pct: number | null
-          bundle_size: number | null
-          cancellation_hours: number | null
-          credit_expiry_months: number | null
-          id: number | null
-          tutor_bio: string | null
-          tutor_name: string | null
-          tutor_timezone: string | null
-          weekly_availability: Json | null
-        }
-        Insert: {
-          bundle_discount_pct?: number | null
-          bundle_size?: number | null
-          cancellation_hours?: number | null
-          credit_expiry_months?: number | null
-          id?: number | null
-          tutor_bio?: string | null
-          tutor_name?: string | null
-          tutor_timezone?: string | null
-          weekly_availability?: Json | null
-        }
-        Update: {
-          bundle_discount_pct?: number | null
-          bundle_size?: number | null
-          cancellation_hours?: number | null
-          credit_expiry_months?: number | null
-          id?: number | null
-          tutor_bio?: string | null
-          tutor_name?: string | null
-          tutor_timezone?: string | null
-          weekly_availability?: Json | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       current_account_id: { Args: never; Returns: string }
+      get_public_settings: {
+        Args: never
+        Returns: {
+          bundle_discount_pct: number
+          bundle_size: number
+          cancellation_hours: number
+          credit_expiry_months: number
+          id: number
+          tutor_bio: string
+          tutor_name: string
+          tutor_timezone: string
+          weekly_availability: Json
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
