@@ -1,52 +1,15 @@
 import { createServerFn } from "@tanstack/react-start";
-import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { fromZonedTime } from "date-fns-tz";
-import type { Database } from "@/integrations/supabase/types";
 
 type AvailabilityRule = { day: number; start: string; end: string };
-
-function createPublicClient() {
-  const url = process.env.SUPABASE_URL!;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
-  return createClient<Database>(url, key, {
-    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
-    global: {
-      fetch: (input, init) => {
-        const h = new Headers(init?.headers);
-        if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`) h.delete("Authorization");
-        h.set("apikey", key);
-        return fetch(input, { ...init, headers: h });
-      },
-    },
-  });
-}
-
-function parseHHMM(s: string): { h: number; m: number } {
-  const [h, m] = s.split(":").map((n) => Number(n));
-  return { h, m: m ?? 0 };
-}
-
-function ymdInTZ(date: Date, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone, year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(date);
-  const y = parts.find((p) => p.type === "year")!.value;
-  const mo = parts.find((p) => p.type === "month")!.value;
-  const d = parts.find((p) => p.type === "day")!.value;
-  return `${y}-${mo}-${d}`;
-}
-
-function weekdayInTZ(date: Date, timeZone: string): number {
-  const wd = new Intl.DateTimeFormat("en-US", { timeZone, weekday: "short" }).format(date);
-  return ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(wd);
-}
 
 export const listPublicOpenSlots = createServerFn({ method: "GET" })
   .inputValidator((input: { days?: number }) =>
     z.object({ days: z.number().int().min(1).max(60).default(28) }).parse(input ?? {}),
   )
   .handler(async ({ data }) => {
+    const { createPublicClient, parseHHMM, ymdInTZ, weekdayInTZ } = await import("./public-booking.server");
     const sb = createPublicClient();
     // Read settings through the SECURITY DEFINER RPC so anon never touches the
     // settings table (which holds tutor_email/zoom_link).
