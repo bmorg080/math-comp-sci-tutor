@@ -233,19 +233,32 @@ function Dashboard() {
               </Card>
             </section>
 
+            <section className="mt-10">
+              <BillingCard />
+            </section>
           </>
         )}
       </main>
 
       {data?.account && (
-        <BuyLessonsDialog
-          open={buyOpen}
-          onOpenChange={setBuyOpen}
-          subjects={data.subjects}
-          trialSubject={data.trialSubject}
-          bundleSize={bundleSize}
-          bundleDiscountPct={bundleDiscountPct}
-        />
+        <>
+          <BuyLessonsDialog
+            open={buyOpen}
+            onOpenChange={setBuyOpen}
+            subjects={data.subjects}
+            trialSubject={data.trialSubject}
+            bundleSize={bundleSize}
+            bundleDiscountPct={bundleDiscountPct}
+            creditExpiryMonths={creditExpiryMonths}
+          />
+          <AccountSettingsDialog
+            key={`${data.account.display_name}-${data.account.timezone}`}
+            open={settingsOpen}
+            onOpenChange={setSettingsOpen}
+            displayName={data.account.display_name}
+            timezone={data.account.timezone}
+          />
+        </>
       )}
     </div>
   );
