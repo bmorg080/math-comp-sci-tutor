@@ -88,6 +88,20 @@ export function StudentsCard({ students }: { students: Student[] }) {
     }
   }
 
+  async function remove(s: Student) {
+    if (!window.confirm(`Remove ${s.name} from your account?`)) return;
+    setRemovingId(s.id);
+    try {
+      await deleteFn({ data: { id: s.id } });
+      qc.invalidateQueries({ queryKey: ["account-overview"] });
+      toast.success("Student removed");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to remove student");
+    } finally {
+      setRemovingId(null);
+    }
+  }
+
   const open = editing !== null || adding;
 
   return (
