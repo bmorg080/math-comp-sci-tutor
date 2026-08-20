@@ -119,9 +119,21 @@ export function StudentsCard({ students }: { students: Student[] }) {
                       )}
                     </p>
                   </div>
-                  <Button size="sm" variant="ghost" onClick={() => openEdit(s)}>
-                    <Pencil className="h-4 w-4" /> Edit
-                  </Button>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button size="sm" variant="ghost" onClick={() => openEdit(s)}>
+                      <Pencil className="h-4 w-4" /> Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-muted-foreground hover:text-destructive"
+                      disabled={removingId === s.id}
+                      onClick={() => remove(s)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Remove {s.name}</span>
+                    </Button>
+                  </div>
                 </li>
               ))}
             </ul>

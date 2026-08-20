@@ -36,6 +36,7 @@ interface Props {
   defaultSubjectId?: string;
   bundleSize?: number;
   bundleDiscountPct?: number;
+  creditExpiryMonths?: number;
 }
 
 export function BuyLessonsDialog({
@@ -46,6 +47,7 @@ export function BuyLessonsDialog({
   defaultSubjectId,
   bundleSize = 5,
   bundleDiscountPct = 10,
+  creditExpiryMonths = 9,
 }: Props) {
   const doCheckout = useServerFn(createLessonCheckout);
   const [subjectId, setSubjectId] = useState(defaultSubjectId ?? subjects[0]?.id ?? "");
@@ -92,7 +94,7 @@ export function BuyLessonsDialog({
         <DialogHeader>
           <DialogTitle>Buy lesson credits</DialogTitle>
           <DialogDescription>
-            Credits expire 9 months after purchase. A pack of {bundleSize} saves {bundleDiscountPct}% vs. single lessons.
+            Credits expire {creditExpiryMonths} months after purchase. A pack of {bundleSize} saves {bundleDiscountPct}% vs. single lessons.
           </DialogDescription>
         </DialogHeader>
 
