@@ -44,6 +44,7 @@ function BookPage() {
   const [subjectId, setSubjectId] = useState<string>("");
   const [pendingSlot, setPendingSlot] = useState<string | null>(null);
   const [buyOpen, setBuyOpen] = useState(false);
+  const [shortNotice, setShortNotice] = useState(false);
 
   const viewerTZ = useMemo(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
@@ -56,8 +57,8 @@ function BookPage() {
   });
 
   const slotsQ = useQuery({
-    queryKey: ["open-slots"],
-    queryFn: () => fetchSlots({ data: { days: 21 } }),
+    queryKey: ["open-slots", shortNotice],
+    queryFn: () => fetchSlots({ data: { days: 21, allowShortNotice: shortNotice } }),
   });
 
   // Auto-select defaults
@@ -67,7 +68,7 @@ function BookPage() {
 
   const bookMut = useMutation({
     mutationFn: (startsAtISO: string) =>
-      doBook({ data: { subjectId, studentId, startsAtISO } }),
+      doBook({ data: { subjectId, studentId, startsAtISO, allowShortNotice: shortNotice } }),
     onSuccess: (res) => {
       if (!res.ok) {
         toast.error(
@@ -165,7 +166,20 @@ function BookPage() {
         </Card>
 
         <section className="mt-8">
-          <h2 className="mb-4 text-xl font-semibold">Available times</h2>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-xl font-semibold">Available times</h2>
+            {account?.isAdmin && (
+              <label className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 accent-primary"
+                  checked={shortNotice}
+                  onChange={(e) => setShortNotice(e.target.checked)}
+                />
+                Tutor override: include times within 5 hours
+              </label>
+            )}
+          </div>
           {slotsQ.isLoading ? (
             <p className="text-muted-foreground">Loading slots…</p>
           ) : groupedSlots.length === 0 ? (
