@@ -45,6 +45,9 @@ function BookPage() {
   const [pendingSlot, setPendingSlot] = useState<string | null>(null);
   const [buyOpen, setBuyOpen] = useState(false);
   const [shortNotice, setShortNotice] = useState(false);
+  useEffect(() => {
+    setShortNotice(window.localStorage.getItem("admin-short-notice") === "1");
+  }, []);
 
   const viewerTZ = useMemo(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
