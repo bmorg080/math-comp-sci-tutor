@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { BookOpen, Plus, Save, Sparkles, Trash2 } from "lucide-react";
+import { BookOpen, Plus, Save, Trash2 } from "lucide-react";
 
 interface Subject {
   id: string;
@@ -27,7 +27,6 @@ export function SubjectsEditor({ subjects }: { subjects: Subject[] }) {
   const [dirty, setDirty] = useState<Record<string, boolean>>({});
   const [newName, setNewName] = useState("");
   const [newPrice, setNewPrice] = useState("65");
-  const [newIsTrial, setNewIsTrial] = useState(false);
 
   useEffect(() => {
     setRows(subjects);
