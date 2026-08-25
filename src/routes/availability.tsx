@@ -114,9 +114,10 @@ function AvailabilityPage() {
                       >
                         <Link to="/auth" search={{ redirect: "/book" }}>
                           <Clock className="h-3.5 w-3.5" />
-                          {new Date(iso).toLocaleTimeString(undefined, {
+                          {new Date(iso).toLocaleTimeString("en-US", {
                             hour: "numeric",
                             minute: "2-digit",
+                            hour12: true,
                           })}
                         </Link>
                       </Button>

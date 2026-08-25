@@ -195,12 +195,13 @@ function AdminPage() {
   });
 
   const fmt = (iso: string) =>
-    new Intl.DateTimeFormat(undefined, {
+    new Intl.DateTimeFormat("en-US", {
       weekday: "short",
       month: "short",
       day: "numeric",
       hour: "numeric",
       minute: "2-digit",
+      hour12: true,
     }).format(new Date(iso));
 
   const [customerFilter, setCustomerFilter] = useState("");
