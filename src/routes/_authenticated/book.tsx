@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ArrowLeft, Calendar as CalIcon, Clock } from "lucide-react";
 import { listOpenSlots, bookLesson } from "@/lib/booking.functions";
@@ -45,6 +45,9 @@ function BookPage() {
   const [pendingSlot, setPendingSlot] = useState<string | null>(null);
   const [buyOpen, setBuyOpen] = useState(false);
   const [shortNotice, setShortNotice] = useState(false);
+  useEffect(() => {
+    setShortNotice(window.localStorage.getItem("admin-short-notice") === "1");
+  }, []);
 
   const viewerTZ = useMemo(
     () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
@@ -168,16 +171,8 @@ function BookPage() {
         <section className="mt-8">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-xl font-semibold">Available times</h2>
-            {account?.isAdmin && (
-              <label className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 accent-primary"
-                  checked={shortNotice}
-                  onChange={(e) => setShortNotice(e.target.checked)}
-                />
-                Tutor override: include times within 5 hours
-              </label>
+            {account?.isAdmin && shortNotice && (
+              <Badge variant="secondary">Short-notice times included</Badge>
             )}
           </div>
           {slotsQ.isLoading ? (
