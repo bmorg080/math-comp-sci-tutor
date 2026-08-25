@@ -113,7 +113,6 @@ export function SubjectsEditor({ subjects }: { subjects: Subject[] }) {
                 <th className="px-3 py-2">Subject</th>
                 <th className="px-3 py-2">Price (USD)</th>
                 <th className="px-3 py-2 text-center">Sort</th>
-                <th className="px-3 py-2 text-center">Trial</th>
                 <th className="px-3 py-2 text-center">Active</th>
                 <th className="px-3 py-2" />
               </tr>
@@ -152,14 +151,6 @@ export function SubjectsEditor({ subjects }: { subjects: Subject[] }) {
                         value={r.sort_order}
                         onChange={(e) => patch(r.id, { sort_order: Number(e.target.value || 0) })}
                       />
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <div className="flex justify-center">
-                        <Switch
-                          checked={r.is_trial}
-                          onCheckedChange={(v) => patch(r.id, { is_trial: v })}
-                        />
-                      </div>
                     </td>
                     <td className="px-3 py-2 text-center">
                       <div className="flex justify-center">
