@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { BookOpen, Plus, Save, Sparkles, Trash2 } from "lucide-react";
+import { BookOpen, Plus, Save, Trash2 } from "lucide-react";
 
 interface Subject {
   id: string;
@@ -27,7 +27,6 @@ export function SubjectsEditor({ subjects }: { subjects: Subject[] }) {
   const [dirty, setDirty] = useState<Record<string, boolean>>({});
   const [newName, setNewName] = useState("");
   const [newPrice, setNewPrice] = useState("65");
-  const [newIsTrial, setNewIsTrial] = useState(false);
 
   useEffect(() => {
     setRows(subjects);
@@ -66,13 +65,12 @@ export function SubjectsEditor({ subjects }: { subjects: Subject[] }) {
       const cents = Math.round(Number(newPrice || "0") * 100);
       if (!newName.trim()) throw new Error("Enter a subject name");
       if (cents <= 0) throw new Error("Enter a positive price");
-      return doCreate({ data: { name: newName.trim(), price_cents: cents, is_trial: newIsTrial } });
+      return doCreate({ data: { name: newName.trim(), price_cents: cents } });
     },
     onSuccess: () => {
       toast.success(`Added "${newName}"`);
       setNewName("");
       setNewPrice("65");
-      setNewIsTrial(false);
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -105,7 +103,6 @@ export function SubjectsEditor({ subjects }: { subjects: Subject[] }) {
         </CardTitle>
         <CardDescription>
           Set the single-lesson price for each subject. Inactive subjects are hidden from customers.
-          Mark a subject as "Trial" to make it a one-time introductory offer for new families.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -116,7 +113,6 @@ export function SubjectsEditor({ subjects }: { subjects: Subject[] }) {
                 <th className="px-3 py-2">Subject</th>
                 <th className="px-3 py-2">Price (USD)</th>
                 <th className="px-3 py-2 text-center">Sort</th>
-                <th className="px-3 py-2 text-center">Trial</th>
                 <th className="px-3 py-2 text-center">Active</th>
                 <th className="px-3 py-2" />
               </tr>
@@ -159,14 +155,6 @@ export function SubjectsEditor({ subjects }: { subjects: Subject[] }) {
                     <td className="px-3 py-2 text-center">
                       <div className="flex justify-center">
                         <Switch
-                          checked={r.is_trial}
-                          onCheckedChange={(v) => patch(r.id, { is_trial: v })}
-                        />
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <div className="flex justify-center">
-                        <Switch
                           checked={r.active}
                           onCheckedChange={(v) => patch(r.id, { active: v })}
                         />
@@ -203,7 +191,7 @@ export function SubjectsEditor({ subjects }: { subjects: Subject[] }) {
 
         <div className="mt-6 rounded-md border border-dashed border-border/60 p-4">
           <p className="mb-3 text-sm font-medium">Add a new subject</p>
-          <div className="grid gap-3 sm:grid-cols-[1fr_120px_auto_auto]">
+          <div className="grid gap-3 sm:grid-cols-[1fr_120px_auto]">
             <Input
               placeholder="Subject name (e.g. AP Calculus BC)"
               value={newName}
@@ -218,16 +206,12 @@ export function SubjectsEditor({ subjects }: { subjects: Subject[] }) {
               value={newPrice}
               onChange={(e) => setNewPrice(e.target.value)}
             />
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Switch checked={newIsTrial} onCheckedChange={setNewIsTrial} />
-              <Sparkles className="h-3.5 w-3.5" /> Trial
-            </label>
             <Button onClick={() => createMut.mutate()} disabled={createMut.isPending}>
               <Plus className="mr-1 h-4 w-4" /> Add
             </Button>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            A matching Stripe product and single-lesson price are created automatically. Non-trial subjects also get a 5-pack price.
+            A matching Stripe product with single-lesson and 5-pack prices is created automatically.
           </p>
         </div>
 
