@@ -189,9 +189,10 @@ function BookPage() {
                         onClick={() => setPendingSlot(iso)}
                       >
                         <Clock className="h-3.5 w-3.5" />
-                        {new Date(iso).toLocaleTimeString(undefined, {
+                        {new Date(iso).toLocaleTimeString("en-US", {
                           hour: "numeric",
                           minute: "2-digit",
+                          hour12: true,
                         })}
                       </Button>
                     ))}
@@ -218,12 +219,13 @@ function BookPage() {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">When</span>
                 <span className="font-medium">
-                  {new Date(pendingSlot).toLocaleString(undefined, {
+                  {new Date(pendingSlot).toLocaleString("en-US", {
                     weekday: "long",
                     month: "short",
                     day: "numeric",
                     hour: "numeric",
                     minute: "2-digit",
+                    hour12: true,
                     timeZoneName: "short",
                   })}
                 </span>

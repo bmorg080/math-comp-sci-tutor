@@ -83,12 +83,13 @@ function LessonsPage() {
   });
 
   const fmt = (iso: string) =>
-    new Intl.DateTimeFormat(undefined, {
+    new Intl.DateTimeFormat("en-US", {
       weekday: "short",
       month: "short",
       day: "numeric",
       hour: "numeric",
       minute: "2-digit",
+      hour12: true,
       timeZoneName: "short",
     }).format(new Date(iso));
 
@@ -261,9 +262,10 @@ function LessonsPage() {
                           rescheduleMut.mutate({ lessonId: rescheduleId, startsAtISO: iso })
                         }
                       >
-                        {new Intl.DateTimeFormat(undefined, {
+                        {new Intl.DateTimeFormat("en-US", {
                           hour: "numeric",
                           minute: "2-digit",
+                          hour12: true,
                         }).format(new Date(iso))}
                       </Button>
                     ))}
