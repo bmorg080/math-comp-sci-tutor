@@ -4,6 +4,7 @@
  * Side effects (calendar, email) stay in the server function.
  */
 import { pickCreditToConsume, type CreditRecord } from "@/lib/domain/credits";
+import { BOOKING_LEAD_MS } from "@/lib/domain/slots";
 
 // The fake client used in tests implements the same narrow surface.
 type Sb = any;
@@ -55,7 +56,11 @@ export async function createBooking(
     .maybeSingle();
   const priceCents: number = customPrice?.price_cents ?? subject.price_cents;
 
-  const startsAt = new Date(data.startsAtISO).toISOString();
+  const startsAtDate = new Date(data.startsAtISO);
+  if (startsAtDate.getTime() - now.getTime() < BOOKING_LEAD_MS) {
+    throw new Error("Lessons must be booked at least 5 hours in advance. Please pick a later time.");
+  }
+  const startsAt = startsAtDate.toISOString();
   const { data: conflict } = await supabase
     .from("lessons")
     .select("id")
