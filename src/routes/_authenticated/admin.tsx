@@ -204,6 +204,11 @@ function AdminPage() {
       hour12: true,
     }).format(new Date(iso));
 
+  const [shortNotice, setShortNotice] = useState(false);
+  useEffect(() => {
+    setShortNotice(window.localStorage.getItem(SHORT_NOTICE_KEY) === "1");
+  }, []);
+
   const [customerFilter, setCustomerFilter] = useState("");
   const filteredAccounts = useMemo(() => {
     const q = customerFilter.trim().toLowerCase();
