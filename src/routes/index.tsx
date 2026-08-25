@@ -4,9 +4,31 @@ import { useServerFn } from "@tanstack/react-start";
 import { getPublicHomeData } from "@/lib/public-data.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { CalendarDays, GraduationCap, Sparkles } from "lucide-react";
+import { CalendarDays, GraduationCap, Mail, Sparkles, ShieldCheck } from "lucide-react";
+
+const TUTOR_EMAIL = "brian@brianmorgantutor.com";
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Math & Computer Science Tutor | Brian Morgan Tutoring" },
+      {
+        name: "description",
+        content:
+          "Private online math and computer science tutoring with Brian Morgan. Book a 1-hour Zoom lesson, buy 5-lesson bundles, or start with a $35 trial lesson.",
+      },
+      { property: "og:title", content: "Math & Computer Science Tutor | Brian Morgan Tutoring" },
+      {
+        property: "og:description",
+        content:
+          "Private online math and computer science tutoring. Pick a time that works, pay online, and get a Zoom link by calendar invite.",
+      },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://brianmorgantutor.com/" },
+      { name: "twitter:card", content: "summary" },
+    ],
+    links: [{ rel: "canonical", href: "https://brianmorgantutor.com/" }],
+  }),
   component: Landing,
 });
 
@@ -68,6 +90,17 @@ function Landing() {
                 </Link>
               </Button>
             </div>
+            <p className="mt-6 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <Mail className="h-4 w-4 text-primary" />
+              Questions before you book? Email{" "}
+              <a
+                href={`mailto:${TUTOR_EMAIL}`}
+                className="font-medium text-primary underline underline-offset-2"
+              >
+                {TUTOR_EMAIL}
+              </a>
+              — I usually reply within a day.
+            </p>
           </div>
         </section>
 
@@ -157,6 +190,73 @@ function Landing() {
           </section>
         )}
 
+        {/* How it works & policies */}
+        <section id="policies" className="mx-auto max-w-6xl px-6 py-12">
+          <div className="flex items-center gap-2 text-primary">
+            <ShieldCheck className="h-5 w-5" />
+            <h2 className="text-3xl font-semibold text-foreground">How booking works</h2>
+          </div>
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            <Card className="p-5">
+              <p className="font-medium">1. Buy lesson credits</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Pay securely by card for a single lesson or a bundle of{" "}
+                {settings?.bundle_size ?? 5} at {settings?.bundle_discount_pct ?? 10}% off. Credits
+                stay on your account until you use them.
+              </p>
+            </Card>
+            <Card className="p-5">
+              <p className="font-medium">2. Pick a time</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Open times are shown in your own timezone. Choose any 1-hour slot that works for
+                your student.
+              </p>
+            </Card>
+            <Card className="p-5">
+              <p className="font-medium">3. Join on Zoom</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                You and your student get a calendar invitation with the Zoom link, plus a reminder
+                before the lesson.
+              </p>
+            </Card>
+          </div>
+
+          <div className="mt-6 grid gap-4 sm:grid-cols-3">
+            <Card className="p-5">
+              <p className="font-medium">Cancellation policy</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Cancel or reschedule up to {settings?.cancellation_hours ?? 24} hours before a
+                lesson and your credit comes back automatically. Inside that window the credit is
+                used, since the time was reserved.
+              </p>
+            </Card>
+            <Card className="p-5">
+              <p className="font-medium">Credit expiration</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Credits are good for {settings?.credit_expiry_months ?? 9} months from purchase, and
+                your dashboard always shows what expires when.
+              </p>
+            </Card>
+            <Card className="p-5">
+              <p className="font-medium">Refunds</p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Unused, unexpired credits can be refunded on request — just email{" "}
+                <a
+                  href={`mailto:${TUTOR_EMAIL}`}
+                  className="text-primary underline underline-offset-2"
+                >
+                  {TUTOR_EMAIL}
+                </a>
+                . Full details are in the{" "}
+                <Link to="/terms" className="text-primary underline underline-offset-2">
+                  terms
+                </Link>
+                .
+              </p>
+            </Card>
+          </div>
+        </section>
+
         <section className="mx-auto max-w-6xl px-6 py-16">
           <Card className="flex flex-col items-center gap-4 p-10 text-center">
             <h3 className="text-2xl font-semibold">Ready to book your first lesson?</h3>
@@ -173,8 +273,19 @@ function Landing() {
       </main>
 
       <footer className="border-t bg-surface/50">
-        <div className="mx-auto max-w-6xl px-6 py-8 text-sm text-muted-foreground">
-          © {new Date().getFullYear()} Brian Morgan Tutoring. All rights reserved.
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 py-8 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+          <span>© {new Date().getFullYear()} Brian Morgan Tutoring. All rights reserved.</span>
+          <nav className="flex flex-wrap items-center gap-4">
+            <a href={`mailto:${TUTOR_EMAIL}`} className="hover:text-primary">
+              {TUTOR_EMAIL}
+            </a>
+            <Link to="/privacy" className="hover:text-primary">
+              Privacy
+            </Link>
+            <Link to="/terms" className="hover:text-primary">
+              Terms
+            </Link>
+          </nav>
         </div>
       </footer>
     </div>
