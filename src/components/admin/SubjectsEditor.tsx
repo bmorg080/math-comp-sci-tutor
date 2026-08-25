@@ -191,7 +191,7 @@ export function SubjectsEditor({ subjects }: { subjects: Subject[] }) {
 
         <div className="mt-6 rounded-md border border-dashed border-border/60 p-4">
           <p className="mb-3 text-sm font-medium">Add a new subject</p>
-          <div className="grid gap-3 sm:grid-cols-[1fr_120px_auto_auto]">
+          <div className="grid gap-3 sm:grid-cols-[1fr_120px_auto]">
             <Input
               placeholder="Subject name (e.g. AP Calculus BC)"
               value={newName}
@@ -206,16 +206,12 @@ export function SubjectsEditor({ subjects }: { subjects: Subject[] }) {
               value={newPrice}
               onChange={(e) => setNewPrice(e.target.value)}
             />
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Switch checked={newIsTrial} onCheckedChange={setNewIsTrial} />
-              <Sparkles className="h-3.5 w-3.5" /> Trial
-            </label>
             <Button onClick={() => createMut.mutate()} disabled={createMut.isPending}>
               <Plus className="mr-1 h-4 w-4" /> Add
             </Button>
           </div>
           <p className="mt-2 text-xs text-muted-foreground">
-            A matching Stripe product and single-lesson price are created automatically. Non-trial subjects also get a 5-pack price.
+            A matching Stripe product with single-lesson and 5-pack prices is created automatically.
           </p>
         </div>
 
