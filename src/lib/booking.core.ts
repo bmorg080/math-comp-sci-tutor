@@ -13,6 +13,8 @@ export type CreateBookingInput = {
   subjectId: string;
   studentId: string;
   startsAtISO: string;
+  /** Admin/tutor override: skip the 5-hour minimum notice. */
+  allowShortNotice?: boolean;
 };
 
 export type CreateBookingResult =
@@ -57,7 +59,7 @@ export async function createBooking(
   const priceCents: number = customPrice?.price_cents ?? subject.price_cents;
 
   const startsAtDate = new Date(data.startsAtISO);
-  if (startsAtDate.getTime() - now.getTime() < BOOKING_LEAD_MS) {
+  if (!data.allowShortNotice && startsAtDate.getTime() - now.getTime() < BOOKING_LEAD_MS) {
     throw new Error("Lessons must be booked at least 5 hours in advance. Please pick a later time.");
   }
   const startsAt = startsAtDate.toISOString();
