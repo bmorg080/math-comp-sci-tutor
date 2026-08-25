@@ -175,7 +175,7 @@ function Dashboard() {
             {data.nextCreditExpiry && (
               <p className="mt-3 text-sm text-muted-foreground">
                 Your next credit expires on{" "}
-                {new Date(data.nextCreditExpiry).toLocaleDateString(undefined, {
+                {new Date(data.nextCreditExpiry).toLocaleDateString("en-US", {
                   month: "long",
                   day: "numeric",
                   year: "numeric",

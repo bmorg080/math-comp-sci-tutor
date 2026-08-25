@@ -372,7 +372,7 @@ function AdminPage() {
                         <td className="px-3 py-2 text-right">{a.lessons.completed}</td>
                         <td className="px-3 py-2 text-right">{a.lessons.cancelled}</td>
                         <td className="px-3 py-2 text-muted-foreground">
-                          {new Date(a.created_at).toLocaleDateString()}
+                          {new Date(a.created_at).toLocaleDateString("en-US")}
                         </td>
                       </tr>
                     ))}
