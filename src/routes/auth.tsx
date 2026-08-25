@@ -75,12 +75,17 @@ function AuthPage() {
               <TabsTrigger value="signup">Create account</TabsTrigger>
             </TabsList>
             <TabsContent value="signin" className="pt-4">
+              <GoogleButton label="Continue with Google" />
+              <OrDivider />
               <SignInForm onDone={() => navigate({ to: search.redirect ?? "/dashboard" })} />
             </TabsContent>
             <TabsContent value="signup" className="pt-4">
+              <GoogleButton label="Sign up with Google" />
+              <OrDivider />
               <SignUpForm onDone={() => navigate({ to: "/dashboard" })} />
             </TabsContent>
           </Tabs>
+
         </Card>
         <p className="mt-6 text-center text-sm text-muted-foreground">
           One account per family. Parents sign up; you can add student info later.
