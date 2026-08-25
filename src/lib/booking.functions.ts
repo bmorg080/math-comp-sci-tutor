@@ -6,11 +6,26 @@ import { createBooking } from "@/lib/booking.core";
 
 export const listOpenSlots = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { days?: number }) =>
-    z.object({ days: z.number().int().min(1).max(60).default(21) }).parse(input),
+  .inputValidator((input: { days?: number; allowShortNotice?: boolean }) =>
+    z
+      .object({
+        days: z.number().int().min(1).max(60).default(21),
+        allowShortNotice: z.boolean().default(false),
+      })
+      .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
+
+    // Only the tutor/admin may see (and later book) short-notice slots.
+    let shortNotice = false;
+    if (data.allowShortNotice) {
+      const { data: isAdmin } = await supabase.rpc("has_role", {
+        _user_id: userId,
+        _role: "admin",
+      });
+      shortNotice = !!isAdmin;
+    }
     // Settings holds the tutor's email/zoom link, so read it through the
     // service role (lets us drop the authenticated settings-read policy).
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -42,21 +57,27 @@ export const listOpenSlots = createServerFn({ method: "GET" })
       timeZone: tz,
       now,
       days: data.days,
-      leadMs: BOOKING_LEAD_MS,
+      leadMs: shortNotice ? 0 : BOOKING_LEAD_MS,
       booked: (booked ?? []).map((b) => b.starts_at),
     });
 
-    return { slots: available, tutorTimezone: tz };
+    return { slots: available, tutorTimezone: tz, shortNotice };
   });
 
 export const bookLesson = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { subjectId: string; studentId: string; startsAtISO: string }) =>
+  .inputValidator((input: {
+    subjectId: string;
+    studentId: string;
+    startsAtISO: string;
+    allowShortNotice?: boolean;
+  }) =>
     z
       .object({
         subjectId: z.string().uuid(),
         studentId: z.string().uuid(),
         startsAtISO: z.string().datetime(),
+        allowShortNotice: z.boolean().default(false),
       })
       .parse(input),
   )
@@ -67,8 +88,19 @@ export const bookLesson = createServerFn({ method: "POST" })
     // role so user-side RLS write policies can stay admin-only. This blocks
     // direct Data API tampering with price/status/credits. createBooking still
     // validates account + student ownership internally.
+    // Short-notice bookings are an admin/tutor-only override.
+    let allowShortNotice = false;
+    if (data.allowShortNotice) {
+      const { data: isAdmin } = await supabase.rpc("has_role", {
+        _user_id: userId,
+        _role: "admin",
+      });
+      if (!isAdmin) throw new Error("Only the tutor can book inside the 5-hour window");
+      allowShortNotice = true;
+    }
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const result = await createBooking(supabaseAdmin as any, userId, data);
+    const result = await createBooking(supabaseAdmin as any, userId, { ...data, allowShortNotice });
     if (!result.ok) {
       return { ok: false as const, needsPayment: true, priceCents: result.priceCents };
     }
