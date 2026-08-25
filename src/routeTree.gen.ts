@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as AvailabilityRouteImport } from './routes/availability'
@@ -23,6 +24,11 @@ import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/l
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as ApiPublicHooksLessonRemindersRouteImport } from './routes/api/public/hooks/lesson-reminders'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -97,6 +103,7 @@ export interface FileRoutesByFullPath {
   '/availability': typeof AvailabilityRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/terms': typeof TermsRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/book': typeof AuthenticatedBookRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -111,6 +118,7 @@ export interface FileRoutesByTo {
   '/availability': typeof AvailabilityRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/terms': typeof TermsRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/book': typeof AuthenticatedBookRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -127,6 +135,7 @@ export interface FileRoutesById {
   '/availability': typeof AvailabilityRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/terms': typeof TermsRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/book': typeof AuthenticatedBookRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -143,6 +152,7 @@ export interface FileRouteTypes {
     | '/availability'
     | '/privacy'
     | '/reset-password'
+    | '/terms'
     | '/admin'
     | '/book'
     | '/dashboard'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/availability'
     | '/privacy'
     | '/reset-password'
+    | '/terms'
     | '/admin'
     | '/book'
     | '/dashboard'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/availability'
     | '/privacy'
     | '/reset-password'
+    | '/terms'
     | '/_authenticated/admin'
     | '/_authenticated/book'
     | '/_authenticated/dashboard'
@@ -188,6 +200,7 @@ export interface RootRouteChildren {
   AvailabilityRoute: typeof AvailabilityRoute
   PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  TermsRoute: typeof TermsRoute
   ApiPublicHooksLessonRemindersRoute: typeof ApiPublicHooksLessonRemindersRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
@@ -195,6 +208,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -313,6 +333,7 @@ const rootRouteChildren: RootRouteChildren = {
   AvailabilityRoute: AvailabilityRoute,
   PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  TermsRoute: TermsRoute,
   ApiPublicHooksLessonRemindersRoute: ApiPublicHooksLessonRemindersRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
