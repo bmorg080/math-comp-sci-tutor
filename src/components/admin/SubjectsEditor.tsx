@@ -65,13 +65,12 @@ export function SubjectsEditor({ subjects }: { subjects: Subject[] }) {
       const cents = Math.round(Number(newPrice || "0") * 100);
       if (!newName.trim()) throw new Error("Enter a subject name");
       if (cents <= 0) throw new Error("Enter a positive price");
-      return doCreate({ data: { name: newName.trim(), price_cents: cents, is_trial: newIsTrial } });
+      return doCreate({ data: { name: newName.trim(), price_cents: cents } });
     },
     onSuccess: () => {
       toast.success(`Added "${newName}"`);
       setNewName("");
       setNewPrice("65");
-      setNewIsTrial(false);
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -104,7 +103,6 @@ export function SubjectsEditor({ subjects }: { subjects: Subject[] }) {
         </CardTitle>
         <CardDescription>
           Set the single-lesson price for each subject. Inactive subjects are hidden from customers.
-          Mark a subject as "Trial" to make it a one-time introductory offer for new families.
         </CardDescription>
       </CardHeader>
       <CardContent>
