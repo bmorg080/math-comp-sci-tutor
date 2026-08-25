@@ -125,7 +125,9 @@ export const rescheduleMyLesson = createServerFn({ method: "POST" })
         const { updateCalendarEvent, loadLessonForCalendar } = await import(
           "@/lib/calendar.server"
         );
-        const payload = await loadLessonForCalendar(supabase as any, lesson.id);
+        // Must use the service role: the settings table (zoom link, tutor name)
+        // is not readable by the customer-scoped client after RLS hardening.
+        const payload = await loadLessonForCalendar(supabaseAdmin as any, lesson.id);
         if (payload) {
           googleUpdated = await updateCalendarEvent(lesson.google_event_id, payload);
         }
