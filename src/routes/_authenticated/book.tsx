@@ -171,16 +171,8 @@ function BookPage() {
         <section className="mt-8">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-xl font-semibold">Available times</h2>
-            {account?.isAdmin && (
-              <label className="flex items-center gap-2 rounded-md border bg-muted/30 px-3 py-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 accent-primary"
-                  checked={shortNotice}
-                  onChange={(e) => setShortNotice(e.target.checked)}
-                />
-                Tutor override: include times within 5 hours
-              </label>
+            {account?.isAdmin && shortNotice && (
+              <Badge variant="secondary">Short-notice times included</Badge>
             )}
           </div>
           {slotsQ.isLoading ? (
