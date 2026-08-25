@@ -84,7 +84,9 @@ export const bookLesson = createServerFn({ method: "POST" })
       const { createCalendarEvent, loadLessonForCalendar } = await import(
         "@/lib/calendar.server"
       );
-      const payload = await loadLessonForCalendar(supabase as any, lesson.id);
+      // Must use the service role: the settings table (zoom link, tutor name)
+      // is not readable by the customer-scoped client after RLS hardening.
+      const payload = await loadLessonForCalendar(supabaseAdmin as any, lesson.id);
       if (payload) {
         const eventId = await createCalendarEvent(payload);
         if (eventId) {
