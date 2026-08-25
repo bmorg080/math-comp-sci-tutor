@@ -37,6 +37,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+export const SHORT_NOTICE_KEY = "admin-short-notice";
+
 export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPage,
   errorComponent: ({ error }) => (
