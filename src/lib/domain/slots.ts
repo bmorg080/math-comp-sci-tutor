@@ -72,3 +72,6 @@ export function generateSlots(opts: {
   const taken = new Set((opts.booked ?? []).map((b) => new Date(b).toISOString()));
   return Array.from(new Set(slots.filter((s) => !taken.has(s)))).sort();
 }
+
+/** Minimum notice required before a lesson start: 5 hours. */
+export const BOOKING_LEAD_MS = 5 * 60 * 60 * 1000;

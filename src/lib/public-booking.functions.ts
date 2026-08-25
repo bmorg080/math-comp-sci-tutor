@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { BOOKING_LEAD_MS } from "@/lib/domain/slots";
 import { z } from "zod";
 import { fromZonedTime } from "date-fns-tz";
 
@@ -33,7 +34,7 @@ export const listPublicOpenSlots = createServerFn({ method: "GET" })
     const rules = (settings.weekly_availability ?? []) as AvailabilityRule[];
 
     const now = new Date();
-    const bufferMs = 60 * 60 * 1000;
+    const bufferMs = BOOKING_LEAD_MS;
     const earliest = new Date(now.getTime() + bufferMs);
     const horizon = new Date(now.getTime() + data.days * 24 * 60 * 60 * 1000);
 

@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { generateSlots, type AvailabilityRule } from "@/lib/domain/slots";
+import { generateSlots, BOOKING_LEAD_MS, type AvailabilityRule } from "@/lib/domain/slots";
 import { createBooking } from "@/lib/booking.core";
 
 export const listOpenSlots = createServerFn({ method: "GET" })
@@ -42,6 +42,7 @@ export const listOpenSlots = createServerFn({ method: "GET" })
       timeZone: tz,
       now,
       days: data.days,
+      leadMs: BOOKING_LEAD_MS,
       booked: (booked ?? []).map((b) => b.starts_at),
     });
 
