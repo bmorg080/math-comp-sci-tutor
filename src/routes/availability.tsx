@@ -46,7 +46,7 @@ function AvailabilityPage() {
   const groupedSlots = useMemo(() => {
     const map = new Map<string, string[]>();
     for (const iso of slotsQ.data?.slots ?? []) {
-      const key = new Date(iso).toLocaleDateString(undefined, {
+      const key = new Date(iso).toLocaleDateString("en-US", {
         weekday: "long",
         month: "long",
         day: "numeric",

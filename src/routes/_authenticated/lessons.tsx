@@ -239,7 +239,7 @@ function LessonsPage() {
             ) : (
               Object.entries(
                 (slotsQ.data?.slots ?? []).reduce<Record<string, string[]>>((acc, iso) => {
-                  const key = new Intl.DateTimeFormat(undefined, {
+                  const key = new Intl.DateTimeFormat("en-US", {
                     weekday: "long",
                     month: "short",
                     day: "numeric",
