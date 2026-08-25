@@ -327,6 +327,39 @@ function AdminPage() {
         {/* Subjects & pricing */}
         <SubjectsEditor subjects={data?.subjects ?? []} />
 
+        {/* Short-notice override */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CalendarClock className="h-4 w-4 text-primary" /> Short-notice booking
+            </CardTitle>
+            <CardDescription>
+              Lessons normally require 5 hours notice. Turn this on to include times within
+              5 hours when you book on the booking page.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <label className="flex items-center gap-3 rounded-md border bg-muted/30 px-3 py-2 text-sm">
+              <Checkbox
+                checked={shortNotice}
+                onCheckedChange={(v) => {
+                  const next = v === true;
+                  setShortNotice(next);
+                  if (typeof window !== "undefined") {
+                    window.localStorage.setItem(SHORT_NOTICE_KEY, next ? "1" : "0");
+                  }
+                  toast.success(
+                    next ? "Short-notice times enabled." : "Short-notice times disabled.",
+                  );
+                }}
+              />
+              Include times within 5 hours when booking
+            </label>
+          </CardContent>
+        </Card>
+
+
+
 
 
         {/* Customers */}
