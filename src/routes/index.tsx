@@ -181,23 +181,30 @@ function Landing() {
             </Card>
           )}
           <div className="grid gap-3 sm:grid-cols-2">
-            {subjects.map((s) => (
-              <Card key={s.id} className="flex items-center justify-between p-5">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <GraduationCap className="h-4 w-4 text-primary" />
-                    <p className="font-medium">{s.name}</p>
+            {subjects.map((s) => {
+              const bundleSize = settings?.bundle_size ?? 5;
+              const discountPct = settings?.bundle_discount_pct ?? 5;
+              const bundlePerLesson = s.price_cents * (1 - discountPct / 100);
+              return (
+                <Card key={s.id} className="flex items-center justify-between p-5">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <GraduationCap className="h-4 w-4 text-primary" />
+                      <p className="font-medium">{s.name}</p>
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">1-hour lesson</p>
                   </div>
-                  <p className="mt-1 text-sm text-muted-foreground">1-hour lesson</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-display text-2xl font-semibold text-primary">
-                    ${(s.price_cents / 100).toFixed(0)}
-                  </p>
-                  <p className="text-xs text-muted-foreground">per hour</p>
-                </div>
-              </Card>
-            ))}
+                  <div className="text-right">
+                    <p className="font-display text-2xl font-semibold text-primary">
+                      ${(bundlePerLesson / 100).toFixed(0)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      in a {bundleSize}-pack · ${(s.price_cents / 100).toFixed(0)}/hr single
+                    </p>
+                  </div>
+                </Card>
+              );
+            })}
           </div>
         </section>
 
