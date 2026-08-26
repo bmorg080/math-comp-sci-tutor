@@ -14,11 +14,33 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const Route = createFileRoute("/auth")({
+  head: () => ({
+    meta: [
+      { title: "Sign In or Create Account | Brian Morgan Tutoring" },
+      {
+        name: "description",
+        content:
+          "Sign in or create a family account to buy lesson credits and book online math and computer science tutoring with Brian Morgan.",
+      },
+      { property: "og:title", content: "Sign In or Create Account | Brian Morgan Tutoring" },
+      {
+        property: "og:description",
+        content:
+          "Create a family account to buy lesson credits and book online math and computer science tutoring sessions.",
+      },
+      { property: "og:type", content: "website" },
+      { property: "og:url", content: "https://brianmorgantutor.com/auth" },
+      { name: "twitter:card", content: "summary" },
+      { name: "robots", content: "noindex" },
+    ],
+    links: [{ rel: "canonical", href: "https://brianmorgantutor.com/auth" }],
+  }),
   validateSearch: (search: Record<string, unknown>) => ({
     redirect: typeof search.redirect === "string" ? search.redirect : undefined,
   }),
   component: AuthPage,
 });
+
 
 const TIMEZONES = [
   "America/New_York",

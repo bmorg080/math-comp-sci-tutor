@@ -28,7 +28,52 @@ export const Route = createFileRoute("/")({
       { name: "twitter:card", content: "summary" },
     ],
     links: [{ rel: "canonical", href: "https://brianmorgantutor.com/" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "EducationalOrganization",
+          name: "Brian Morgan Tutoring",
+          url: "https://brianmorgantutor.com/",
+          email: "brian@brianmorgantutor.com",
+          description:
+            "Private online math and computer science tutoring: pre-algebra through calculus, SAT math prep, and AP Computer Science A.",
+          makesOffer: [
+            {
+              "@type": "Offer",
+              itemOffered: {
+                "@type": "Service",
+                name: "Trial tutoring lesson",
+                serviceType: "Online math or computer science tutoring",
+              },
+              price: "35.00",
+              priceCurrency: "USD",
+            },
+            {
+              "@type": "Offer",
+              itemOffered: {
+                "@type": "Service",
+                name: "AP Computer Science A tutoring",
+                serviceType: "Online computer science tutoring",
+              },
+              priceCurrency: "USD",
+            },
+            {
+              "@type": "Offer",
+              itemOffered: {
+                "@type": "Service",
+                name: "Math tutoring (pre-algebra through calculus)",
+                serviceType: "Online math tutoring",
+              },
+              priceCurrency: "USD",
+            },
+          ],
+        }),
+      },
+    ],
   }),
+
   component: Landing,
 });
 
