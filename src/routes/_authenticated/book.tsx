@@ -85,7 +85,7 @@ function BookPage() {
       setPendingSlot(null);
       qc.invalidateQueries({ queryKey: ["open-slots"] });
       qc.invalidateQueries({ queryKey: ["account-overview"] });
-      navigate({ to: "/dashboard" });
+      navigate({ to: "/booked/$lessonId", params: { lessonId: res.lessonId } });
     },
     onError: (e: unknown) => {
       toast.error(e instanceof Error ? e.message : "Booking failed");
