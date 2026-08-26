@@ -79,6 +79,15 @@ export const Route = createFileRoute("/")({
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
+/** Convert a "HH:MM" 24-hour string to 12-hour format, e.g. "16:00" → "4:00 PM". */
+function to12hr(t: string): string {
+  const [hStr, mStr] = t.split(":");
+  let h = parseInt(hStr, 10);
+  const suffix = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return `${h}:${mStr} ${suffix}`;
+}
+
 function Landing() {
   const fetchHome = useServerFn(getPublicHomeData);
   const { data } = useQuery({
