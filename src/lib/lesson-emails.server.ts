@@ -15,6 +15,7 @@ function fmt(tz: string, iso: string) {
     day: "numeric",
     hour: "numeric",
     minute: "2-digit",
+    hour12: true,
     timeZoneName: "short",
   }).format(new Date(iso));
 }

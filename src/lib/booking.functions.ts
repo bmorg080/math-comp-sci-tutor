@@ -174,6 +174,7 @@ export const bookLesson = createServerFn({ method: "POST" })
             day: "numeric",
             hour: "numeric",
             minute: "2-digit",
+            hour12: true,
             timeZoneName: "short",
           }).format(new Date(startsAt));
 
