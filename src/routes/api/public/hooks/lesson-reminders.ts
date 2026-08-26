@@ -60,6 +60,7 @@ export const Route = createFileRoute("/api/public/hooks/lesson-reminders")({
             day: "numeric",
             hour: "numeric",
             minute: "2-digit",
+            hour12: true,
             timeZoneName: "short",
           }).format(new Date(d));
 
