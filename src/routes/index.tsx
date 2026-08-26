@@ -242,7 +242,7 @@ function Landing() {
                     <li key={i} className="flex justify-between border-b pb-2 last:border-b-0">
                       <span className="font-medium">{DAY_NAMES[w.day]}</span>
                       <span className="text-muted-foreground">
-                        {w.start} – {w.end}
+                        {to12hr(w.start)} – {to12hr(w.end)}
                       </span>
                     </li>
                   ))}
