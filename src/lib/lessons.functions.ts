@@ -153,3 +153,63 @@ export const rescheduleMyLesson = createServerFn({ method: "POST" })
 
     return { ok: true };
   });
+
+export const getLessonConfirmation = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { lessonId: string }) =>
+    z.object({ lessonId: z.string().uuid() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+
+    // RLS scopes this select to the caller's account.
+    const { data: lesson } = await supabase
+      .from("lessons")
+      .select(
+        "id, starts_at, duration_minutes, status, google_event_id, student:students(name), subject:subjects(name)",
+      )
+      .eq("id", data.lessonId)
+      .maybeSingle();
+    if (!lesson) throw new Error("Lesson not found");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: settings } = await supabaseAdmin
+      .from("settings")
+      .select("zoom_link, tutor_name, tutor_email, cancellation_hours")
+      .eq("id", 1)
+      .maybeSingle();
+
+    const zoomLink = settings?.zoom_link ?? "";
+    const subjectName = (lesson.subject as { name?: string } | null)?.name ?? "Lesson";
+    const studentName = (lesson.student as { name?: string } | null)?.name ?? "Student";
+
+    const { buildIcs } = await import("@/lib/ics");
+    const ics = buildIcs({
+      uid: `lesson-${lesson.id}@brianmorgantutor.com`,
+      startsAtISO: new Date(lesson.starts_at).toISOString(),
+      durationMinutes: lesson.duration_minutes,
+      title: `${subjectName} — ${studentName}`,
+      description: `Tutoring session with ${settings?.tutor_name ?? "your tutor"}.${
+        zoomLink ? `\nJoin here: ${zoomLink}` : ""
+      }`,
+      location: zoomLink || undefined,
+      organizerEmail: settings?.tutor_email ?? null,
+      organizerName: settings?.tutor_name ?? null,
+    });
+
+    return {
+      lesson: {
+        id: lesson.id,
+        startsAt: lesson.starts_at,
+        durationMinutes: lesson.duration_minutes,
+        status: lesson.status,
+        subjectName,
+        studentName,
+        googleSynced: !!lesson.google_event_id,
+      },
+      zoomLink,
+      tutorName: settings?.tutor_name ?? "Your tutor",
+      cancellationHours: settings?.cancellation_hours ?? 24,
+      ics,
+    };
+  });
