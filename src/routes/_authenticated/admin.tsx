@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, redirect } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
@@ -40,6 +40,12 @@ import {
 export const SHORT_NOTICE_KEY = "admin-short-notice";
 
 export const Route = createFileRoute("/_authenticated/admin")({
+  // Gate before the admin shell renders. Server functions independently
+  // re-check the tutor role, this only avoids showing the page to non-admins.
+  beforeLoad: async () => {
+    const overview = await getMyAccountOverview();
+    if (!overview?.isAdmin) throw redirect({ to: "/dashboard" });
+  },
   component: AdminPage,
   errorComponent: ({ error }) => (
     <div className="p-8 text-sm text-destructive">Admin: {error.message}</div>

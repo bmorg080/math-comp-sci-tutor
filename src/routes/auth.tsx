@@ -35,9 +35,12 @@ export const Route = createFileRoute("/auth")({
     ],
     links: [{ rel: "canonical", href: "https://brianmorgantutor.com/auth" }],
   }),
-  validateSearch: (search: Record<string, unknown>) => ({
-    redirect: typeof search.redirect === "string" ? search.redirect : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>) => {
+    // Only allow same-site paths, so this can never bounce anyone off-site.
+    const raw = typeof search.redirect === "string" ? search.redirect : undefined;
+    const safe = raw && /^\/(?!\/)[A-Za-z0-9\-._~/?#[\]@!$&'()*+,;=%]*$/.test(raw) ? raw : undefined;
+    return { redirect: safe };
+  },
   component: AuthPage,
 });
 
