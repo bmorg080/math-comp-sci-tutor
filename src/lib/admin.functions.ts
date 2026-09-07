@@ -517,3 +517,115 @@ export const updateAvailability = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export type TutorPayment = {
+  key: string;
+  purchased_at: string;
+  account_name: string;
+  description: string;
+  quantity: number;
+  total_cents: number;
+  refunded: number;
+};
+
+/** Tutor-only dashboard: booked lessons, payments received, calendar feed. */
+export const getTutorDashboard = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    await assertAdmin(supabase, userId);
+
+    const now = new Date();
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const rangeStart = new Date(monthStart.getTime() - 31 * 86_400_000);
+    const rangeEnd = new Date(monthStart.getTime() + 120 * 86_400_000);
+
+    const [lessonsRes, creditsRes, accountsRes] = await Promise.all([
+      supabase
+        .from("lessons")
+        .select(
+          "id, starts_at, duration_minutes, status, student:students(name), subject:subjects(name), account:accounts(display_name)",
+        )
+        .gte("starts_at", rangeStart.toISOString())
+        .lte("starts_at", rangeEnd.toISOString())
+        .order("starts_at", { ascending: true })
+        .limit(500),
+      supabase
+        .from("credits")
+        .select(
+          "id, account_id, source, price_cents_paid, stripe_payment_id, purchased_at, refunded_at, note",
+        )
+        .order("purchased_at", { ascending: false })
+        .limit(500),
+      supabase.from("accounts").select("id, display_name"),
+    ]);
+
+    const nameById = new Map<string, string>(
+      (accountsRes.data ?? []).map((a: any) => [a.id, a.display_name as string]),
+    );
+
+    const groups = new Map<string, TutorPayment>();
+    for (const c of creditsRes.data ?? []) {
+      const key = c.stripe_payment_id ?? `${c.account_id}-${c.source}-${c.purchased_at}`;
+      const label =
+        c.source === "admin_grant"
+          ? "Credit granted by tutor"
+          : c.source === "purchase_bundle"
+            ? "Lesson pack"
+            : c.source === "purchase_single"
+              ? "Single lesson"
+              : (c.note ?? "Adjustment");
+      const g =
+        groups.get(key) ??
+        ({
+          key,
+          purchased_at: c.purchased_at,
+          account_name: nameById.get(c.account_id) ?? "Family",
+          description: label,
+          quantity: 0,
+          total_cents: 0,
+          refunded: 0,
+        } satisfies TutorPayment);
+      g.quantity += 1;
+      g.total_cents += c.price_cents_paid ?? 0;
+      if (c.refunded_at) g.refunded += 1;
+      groups.set(key, g);
+    }
+    const payments = [...groups.values()]
+      .filter((p) => p.total_cents > 0)
+      .sort((a, b) => b.purchased_at.localeCompare(a.purchased_at));
+
+    const monthStartMs = monthStart.getTime();
+    const last30Ms = now.getTime() - 30 * 86_400_000;
+    const revenue = {
+      allTimeCents: payments.reduce((s, p) => s + p.total_cents, 0),
+      thisMonthCents: payments
+        .filter((p) => new Date(p.purchased_at).getTime() >= monthStartMs)
+        .reduce((s, p) => s + p.total_cents, 0),
+      last30Cents: payments
+        .filter((p) => new Date(p.purchased_at).getTime() >= last30Ms)
+        .reduce((s, p) => s + p.total_cents, 0),
+    };
+
+    const lessons = lessonsRes.data ?? [];
+    const nowMs = now.getTime();
+    const upcoming = lessons.filter(
+      (l: any) => l.status === "scheduled" && new Date(l.starts_at).getTime() >= nowMs,
+    );
+    const weekAheadMs = nowMs + 7 * 86_400_000;
+
+    return {
+      lessons,
+      upcoming,
+      payments: payments.slice(0, 50),
+      revenue,
+      stats: {
+        upcomingCount: upcoming.length,
+        thisWeekCount: upcoming.filter(
+          (l: any) => new Date(l.starts_at).getTime() <= weekAheadMs,
+        ).length,
+        completedCount: lessons.filter((l: any) => l.status === "completed").length,
+        cancelledCount: lessons.filter((l: any) => l.status === "cancelled").length,
+      },
+    };
+  });
