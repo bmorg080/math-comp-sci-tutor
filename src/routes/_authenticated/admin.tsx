@@ -237,7 +237,13 @@ function AdminPage() {
             <ArrowLeft className="h-4 w-4" /> Dashboard
           </Link>
           <h1 className="text-lg font-semibold">Admin</h1>
-          <Badge variant="secondary">Tutor</Badge>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/tutor">Tutor dashboard</Link>
+            </Button>
+            <Badge variant="secondary">Tutor</Badge>
+          </div>
+
         </div>
       </header>
 
