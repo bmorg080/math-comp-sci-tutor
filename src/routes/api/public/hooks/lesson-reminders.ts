@@ -5,9 +5,21 @@ export const Route = createFileRoute("/api/public/hooks/lesson-reminders")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        // Auth: require Supabase anon key in apikey header
-        const apikey = request.headers.get("apikey");
-        if (!apikey || apikey !== process.env.SUPABASE_PUBLISHABLE_KEY) {
+        // Auth: require the private cron token. The publishable key is public
+        // (it ships in the browser bundle) and must never gate this endpoint.
+        const expected = process.env.REMINDER_CRON_SECRET;
+        const provided = request.headers.get("x-cron-secret") ?? "";
+        const ok =
+          !!expected &&
+          provided.length === expected.length &&
+          (() => {
+            let diff = 0;
+            for (let i = 0; i < expected.length; i++) {
+              diff |= expected.charCodeAt(i) ^ provided.charCodeAt(i);
+            }
+            return diff === 0;
+          })();
+        if (!ok) {
           return new Response(JSON.stringify({ error: "unauthorized" }), {
             status: 401,
             headers: { "Content-Type": "application/json" },
