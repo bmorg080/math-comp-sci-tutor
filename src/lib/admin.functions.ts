@@ -554,7 +554,7 @@ export const getTutorDashboard = createServerFn({ method: "GET" })
       Date.UTC(anchorMonthStart.getUTCFullYear(), anchorMonthStart.getUTCMonth() + 1, 8),
     );
 
-    const [lessonsRes, creditsRes, accountsRes, completedCountRes, cancelledCountRes] =
+    const [lessonsRes, upcomingRes, creditsRes, accountsRes, completedCountRes, cancelledCountRes] =
       await Promise.all([
         supabase
           .from("lessons")
@@ -643,9 +643,7 @@ export const getTutorDashboard = createServerFn({ method: "GET" })
 
     const lessons = lessonsRes.data ?? [];
     const nowMs = now.getTime();
-    const upcoming = lessons.filter(
-      (l: any) => l.status === "scheduled" && new Date(l.starts_at).getTime() >= nowMs,
-    );
+    const upcoming = upcomingRes.data ?? [];
     const weekAheadMs = nowMs + 7 * 86_400_000;
 
     return {
@@ -658,8 +656,8 @@ export const getTutorDashboard = createServerFn({ method: "GET" })
         thisWeekCount: upcoming.filter(
           (l: any) => new Date(l.starts_at).getTime() <= weekAheadMs,
         ).length,
-        completedCount: lessons.filter((l: any) => l.status === "completed").length,
-        cancelledCount: lessons.filter((l: any) => l.status === "cancelled").length,
+        completedCount: completedCountRes.count ?? 0,
+        cancelledCount: cancelledCountRes.count ?? 0,
       },
     };
   });
