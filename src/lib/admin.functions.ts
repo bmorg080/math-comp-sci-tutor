@@ -593,6 +593,7 @@ export const getTutorDashboard = createServerFn({ method: "GET" })
           .gte("cancelled_at", new Date(now.getTime() - 90 * 86_400_000).toISOString()),
       ]);
 
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
     const nameById = new Map<string, string>(
       (accountsRes.data ?? []).map((a: any) => [a.id, a.display_name as string]),
     );
