@@ -531,35 +531,69 @@ export type TutorPayment = {
 /** Tutor-only dashboard: booked lessons, payments received, calendar feed. */
 export const getTutorDashboard = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((input: { anchor?: string } | undefined) =>
+    z
+      .object({ anchor: z.string().datetime({ offset: true }).optional() })
+      .optional()
+      .parse(input ?? {}),
+  )
+  .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await assertAdmin(supabase, userId);
 
     const now = new Date();
+    // The lessons window follows the calendar month being viewed (anchor),
+    // padded so the leading/trailing grid days of that month are covered.
+    const anchor = data?.anchor ? new Date(data.anchor) : now;
+    const anchorValid = !isNaN(anchor.getTime()) ? anchor : now;
+    const anchorMonthStart = new Date(
+      Date.UTC(anchorValid.getUTCFullYear(), anchorValid.getUTCMonth(), 1),
+    );
+    const rangeStart = new Date(anchorMonthStart.getTime() - 7 * 86_400_000);
+    const rangeEnd = new Date(
+      Date.UTC(anchorMonthStart.getUTCFullYear(), anchorMonthStart.getUTCMonth() + 1, 8),
+    );
+
+    const [lessonsRes, upcomingRes, creditsRes, accountsRes, completedCountRes, cancelledCountRes] =
+      await Promise.all([
+        supabase
+          .from("lessons")
+          .select(
+            "id, starts_at, duration_minutes, status, student:students(name), subject:subjects(name), account:accounts(display_name)",
+          )
+          .gte("starts_at", rangeStart.toISOString())
+          .lte("starts_at", rangeEnd.toISOString())
+          .order("starts_at", { ascending: true })
+          .limit(500),
+        supabase
+          .from("lessons")
+          .select(
+            "id, starts_at, status, student:students(name), subject:subjects(name), account:accounts(display_name)",
+          )
+          .eq("status", "scheduled")
+          .gte("starts_at", now.toISOString())
+          .order("starts_at", { ascending: true })
+          .limit(200),
+        supabase
+          .from("credits")
+          .select(
+            "id, account_id, source, price_cents_paid, stripe_payment_id, purchased_at, refunded_at, note",
+          )
+          .order("purchased_at", { ascending: false })
+          .limit(500),
+        supabase.from("accounts").select("id, display_name"),
+        supabase
+          .from("lessons")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "completed"),
+        supabase
+          .from("lessons")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "cancelled")
+          .gte("cancelled_at", new Date(now.getTime() - 90 * 86_400_000).toISOString()),
+      ]);
+
     const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-    const rangeStart = new Date(monthStart.getTime() - 31 * 86_400_000);
-    const rangeEnd = new Date(monthStart.getTime() + 120 * 86_400_000);
-
-    const [lessonsRes, creditsRes, accountsRes] = await Promise.all([
-      supabase
-        .from("lessons")
-        .select(
-          "id, starts_at, duration_minutes, status, student:students(name), subject:subjects(name), account:accounts(display_name)",
-        )
-        .gte("starts_at", rangeStart.toISOString())
-        .lte("starts_at", rangeEnd.toISOString())
-        .order("starts_at", { ascending: true })
-        .limit(500),
-      supabase
-        .from("credits")
-        .select(
-          "id, account_id, source, price_cents_paid, stripe_payment_id, purchased_at, refunded_at, note",
-        )
-        .order("purchased_at", { ascending: false })
-        .limit(500),
-      supabase.from("accounts").select("id, display_name"),
-    ]);
-
     const nameById = new Map<string, string>(
       (accountsRes.data ?? []).map((a: any) => [a.id, a.display_name as string]),
     );
@@ -609,9 +643,7 @@ export const getTutorDashboard = createServerFn({ method: "GET" })
 
     const lessons = lessonsRes.data ?? [];
     const nowMs = now.getTime();
-    const upcoming = lessons.filter(
-      (l: any) => l.status === "scheduled" && new Date(l.starts_at).getTime() >= nowMs,
-    );
+    const upcoming = upcomingRes.data ?? [];
     const weekAheadMs = nowMs + 7 * 86_400_000;
 
     return {
@@ -624,8 +656,8 @@ export const getTutorDashboard = createServerFn({ method: "GET" })
         thisWeekCount: upcoming.filter(
           (l: any) => new Date(l.starts_at).getTime() <= weekAheadMs,
         ).length,
-        completedCount: lessons.filter((l: any) => l.status === "completed").length,
-        cancelledCount: lessons.filter((l: any) => l.status === "cancelled").length,
+        completedCount: completedCountRes.count ?? 0,
+        cancelledCount: cancelledCountRes.count ?? 0,
       },
     };
   });
