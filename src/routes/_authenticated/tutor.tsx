@@ -67,11 +67,16 @@ type Lesson = {
 
 function TutorDashboard() {
   const fetchDash = useServerFn(getTutorDashboard);
-  const q = useQuery({ queryKey: ["tutor-dashboard"], queryFn: () => fetchDash() });
 
   const [monthOffset, setMonthOffset] = useState(0);
   const today = new Date();
   const viewMonth = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+  const anchorIso = viewMonth.toISOString();
+
+  const q = useQuery({
+    queryKey: ["tutor-dashboard", anchorIso],
+    queryFn: () => fetchDash({ data: { anchor: anchorIso } }),
+  });
 
   const lessons = (q.data?.lessons ?? []) as Lesson[];
 
