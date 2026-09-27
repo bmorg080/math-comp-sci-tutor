@@ -71,7 +71,7 @@ function TutorDashboard() {
   const [monthOffset, setMonthOffset] = useState(0);
   const today = new Date();
   const viewMonth = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
-  const anchorIso = viewMonth.toISOString();
+  const anchorIso = new Date(Date.UTC(viewMonth.getFullYear(), viewMonth.getMonth(), 1)).toISOString();
 
   const q = useQuery({
     queryKey: ["tutor-dashboard", anchorIso],
