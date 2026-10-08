@@ -63,7 +63,7 @@ export function LandingPage() {
             </h1>
             <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
               {settings?.tutor_bio ||
-                "I am a high school computer science teacher and math tutor. I have a background in computer science, and I enjoy working through tough problems with students."}
+                "I am a high school computer science teacher and math tutor based in Boston. I work with students in middle school through high school in Pre-Algebra, Algebra I, Algebra II, Geometry, Pre-Calculus, and Calculus."}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild size="lg">
