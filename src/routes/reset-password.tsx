@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { guardWithHoldingPage } from "@/lib/site-hold";
 
 export const Route = createFileRoute("/reset-password")({
   ssr: false,
+  beforeLoad: ({ location }) => guardWithHoldingPage(location),
   component: ResetPasswordPage,
   head: () => ({
     meta: [

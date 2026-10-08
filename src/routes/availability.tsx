@@ -7,6 +7,7 @@ import { listPublicOpenSlots } from "@/lib/public-booking.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { guardWithHoldingPage } from "@/lib/site-hold";
 
 export const Route = createFileRoute("/availability")({
   head: () => ({
@@ -24,6 +25,7 @@ export const Route = createFileRoute("/availability")({
       },
     ],
   }),
+  beforeLoad: ({ location }) => guardWithHoldingPage(location),
   component: AvailabilityPage,
   errorComponent: ({ error }) => (
     <div className="p-8 text-sm text-destructive">Couldn't load availability: {error.message}</div>

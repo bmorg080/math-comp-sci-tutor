@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { LegalLayout } from "@/components/LegalLayout";
+import { guardWithHoldingPage } from "@/lib/site-hold";
 
 export const Route = createFileRoute("/terms")({
   head: () => ({
@@ -21,6 +22,7 @@ export const Route = createFileRoute("/terms")({
     ],
     links: [{ rel: "canonical", href: "https://brianmorgantutor.com/terms" }],
   }),
+  beforeLoad: ({ location }) => guardWithHoldingPage(location),
   component: TermsPage,
 });
 
