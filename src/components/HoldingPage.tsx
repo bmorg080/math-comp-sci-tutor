@@ -6,7 +6,7 @@ import { Mail } from "lucide-react";
 const TUTOR_EMAIL = "brian@brianmorgantutor.com";
 
 const FALLBACK_BIO =
-  "I am a high school computer science teacher and math tutor. I have a background in computer science, and I enjoy working through tough problems with students.";
+  "I am a high school computer science teacher and math tutor based in Boston. I work with students in middle school through high school in Pre-Algebra, Algebra I, Algebra II, Geometry, Pre-Calculus, and Calculus.";
 
 /**
  * The stored bio is written for the full site, so it ends with an invitation to
@@ -51,7 +51,7 @@ export function HoldingPage() {
       </header>
 
       <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-6 py-16">
-        <h1 className="font-display text-3xl font-semibold sm:text-4xl">About Brian Morgan</h1>
+        <h1 className="font-display text-3xl font-semibold sm:text-4xl">About Me</h1>
 
         <p className="mt-6 whitespace-pre-line text-lg leading-relaxed text-muted-foreground">
           {bio}
