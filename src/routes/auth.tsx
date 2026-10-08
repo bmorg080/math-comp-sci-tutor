@@ -15,6 +15,9 @@ import { Card } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export const Route = createFileRoute("/auth")({
+  // Client-only so the tutor's saved "?hold=off" bypass is visible to the guard
+  // on a cold load; the page is a noindex form, so SSR adds nothing here.
+  ssr: false,
   head: () => ({
     meta: [
       { title: "Sign In or Create Account | Brian Morgan Tutoring" },
