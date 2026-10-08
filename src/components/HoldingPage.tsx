@@ -19,7 +19,7 @@ function displayBio(raw: string): string {
     .split(/\n+/)
     .map((line) =>
       line
-        .replace(/\s*(?:contact\s+me|email\s+me)\s*[:\-–]?\s*[^\s@]+@[^\s,;.]+/gi, "")
+        .replace(/\s*(?:contact\s+me|email\s+me)\s*[:\-–]?\s*[^\s@]+@[^\s]*[^\s,;.]/gi, "")
         .split(/(?<=[.!?])\s+/)
         .filter((s) => !/\b(book|booking|trial|schedul\w*|reserv\w*|sign ?up|zoom)\b/i.test(s))
         .join(" ")
