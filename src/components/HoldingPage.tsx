@@ -8,6 +8,29 @@ const TUTOR_EMAIL = "brian@brianmorgantutor.com";
 const FALLBACK_BIO =
   "I am a high school computer science teacher and math tutor. I have a background in computer science, and I enjoy working through tough problems with students.";
 
+/**
+ * The stored bio is written for the full site, so it ends with an invitation to
+ * book and a repeated contact line. This page has no booking and its own email
+ * block, so those sentences are dropped here — the stored text is untouched and
+ * still appears in full on the normal landing page.
+ */
+function displayBio(raw: string): string {
+  const out = raw
+    .split(/\n+/)
+    .map((line) =>
+      line
+        .replace(/\s*(?:contact\s+me|email\s+me)\s*[:\-–]?\s*[^\s@]+@[^\s,;.]+/gi, "")
+        .split(/(?<=[.!?])\s+/)
+        .filter((s) => !/\b(book|booking|trial|schedul\w*|reserv\w*|sign ?up|zoom)\b/i.test(s))
+        .join(" ")
+        .trim(),
+    )
+    .filter(Boolean)
+    .join("\n\n")
+    .trim();
+  return out.length > 20 ? out : FALLBACK_BIO;
+}
+
 export function HoldingPage() {
   const fetchHome = useServerFn(getPublicHomeData);
   const { data } = useQuery({
@@ -15,7 +38,7 @@ export function HoldingPage() {
     queryFn: () => fetchHome(),
   });
 
-  const bio = data?.settings?.tutor_bio?.trim() || FALLBACK_BIO;
+  const bio = displayBio(data?.settings?.tutor_bio?.trim() || FALLBACK_BIO);
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
