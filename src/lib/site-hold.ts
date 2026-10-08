@@ -23,9 +23,27 @@ const STORAGE_KEY = "brian-morgan-hold";
 /** Tutor-only surfaces that stay reachable while the hold is on. */
 const ALWAYS_ALLOWED = ["/admin", "/tutor"];
 
-function isBypassParam(search: string) {
+/**
+ * The router's location object. `search` is a parsed object, so the raw query
+ * string is read from `searchStr` (falling back to `href`).
+ */
+export type HoldLocation = { pathname: string; searchStr?: string; href?: string };
+
+function rawSearch(loc: HoldLocation): string {
+  if (typeof loc.searchStr === "string") return loc.searchStr;
+  if (typeof loc.href === "string") {
+    const q = loc.href.indexOf("?");
+    if (q < 0) return "";
+    const rest = loc.href.slice(q + 1);
+    const h = rest.indexOf("#");
+    return h >= 0 ? rest.slice(0, h) : rest;
+  }
+  return "";
+}
+
+function isBypassParam(loc: HoldLocation) {
   try {
-    return new URLSearchParams(search).get(HOLD_PARAM) === HOLD_OFF;
+    return new URLSearchParams(rawSearch(loc)).get(HOLD_PARAM) === HOLD_OFF;
   } catch {
     return false;
   }
@@ -40,20 +58,19 @@ function hasStoredBypass() {
   }
 }
 
-export function isHoldingPageBypassed(location: { pathname: string; search: string }) {
+export function isHoldingPageBypassed(loc: HoldLocation) {
   if (!HOLDING_PAGE_ENABLED) return true;
-  if (ALWAYS_ALLOWED.some((p) => location.pathname === p || location.pathname.startsWith(p + "/"))) {
+  if (ALWAYS_ALLOWED.some((p) => loc.pathname === p || loc.pathname.startsWith(p + "/"))) {
     return true;
   }
-  return isBypassParam(location.search) || hasStoredBypass();
+  return isBypassParam(loc) || hasStoredBypass();
 }
 
 /**
  * Call from a route's beforeLoad. Throws a redirect to "/" when the hold applies.
- * `location` is the router's location for the route being loaded.
  */
-export function guardWithHoldingPage(location: { pathname: string; search: string }) {
-  if (!isHoldingPageBypassed(location)) {
+export function guardWithHoldingPage(loc: HoldLocation) {
+  if (!isHoldingPageBypassed(loc)) {
     throw redirect({ to: "/", replace: true });
   }
 }
@@ -65,9 +82,8 @@ export function guardWithHoldingPage(location: { pathname: string; search: strin
  */
 export function syncHoldingPageBypass() {
   if (typeof window === "undefined") return;
-  let raw: string | null = null;
   try {
-    raw = new URLSearchParams(window.location.search).get(HOLD_PARAM);
+    const raw = new URLSearchParams(window.location.search).get(HOLD_PARAM);
     if (raw === HOLD_OFF) window.localStorage.setItem(STORAGE_KEY, HOLD_OFF);
     else if (raw === HOLD_ON) window.localStorage.removeItem(STORAGE_KEY);
   } catch {
