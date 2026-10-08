@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { LegalLayout } from "@/components/LegalLayout";
+import { guardWithHoldingPage } from "@/lib/site-hold";
 
 export const Route = createFileRoute("/privacy")({
   head: () => ({
@@ -21,6 +22,7 @@ export const Route = createFileRoute("/privacy")({
     ],
     links: [{ rel: "canonical", href: "https://brianmorgantutor.com/privacy" }],
   }),
+  beforeLoad: ({ location }) => guardWithHoldingPage(location),
   component: PrivacyPage,
 });
 

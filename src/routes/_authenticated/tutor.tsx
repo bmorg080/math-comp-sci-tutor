@@ -34,7 +34,9 @@ export const Route = createFileRoute("/_authenticated/tutor")({
     ],
   }),
   errorComponent: ({ error }) => (
-    <div className="p-8 text-sm text-destructive">Tutor dashboard: {error.message}</div>
+    <div className="p-8 text-sm text-destructive">
+      Tutor dashboard: {error instanceof Error ? error.message : "Please try again."}
+    </div>
   ),
   notFoundComponent: () => <div className="p-8 text-sm">Page not found.</div>,
 });

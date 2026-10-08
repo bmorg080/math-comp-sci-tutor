@@ -29,7 +29,9 @@ import {
 export const Route = createFileRoute("/_authenticated/book")({
   component: BookPage,
   errorComponent: ({ error }) => (
-    <div className="p-8 text-sm text-destructive">Couldn't load booking: {error.message}</div>
+    <div className="p-8 text-sm text-destructive">
+      Couldn't load booking: {error instanceof Error ? error.message : "Please try again."}
+    </div>
   ),
 });
 
