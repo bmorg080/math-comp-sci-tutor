@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { syncHoldingPageBypass } from "@/lib/site-hold";
 import { Toaster } from "sonner";
 
 function NotFoundComponent() {
@@ -133,6 +134,7 @@ function RootComponent() {
   const router = useRouter();
 
   useEffect(() => {
+    syncHoldingPageBypass();
     let mounted = true;
     import("@/integrations/supabase/client").then(({ supabase }) => {
       if (!mounted) return;
