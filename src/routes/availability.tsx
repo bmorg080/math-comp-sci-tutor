@@ -28,7 +28,9 @@ export const Route = createFileRoute("/availability")({
   beforeLoad: ({ location }) => guardWithHoldingPage(location),
   component: AvailabilityPage,
   errorComponent: ({ error }) => (
-    <div className="p-8 text-sm text-destructive">Couldn't load availability: {error.message}</div>
+    <div className="p-8 text-sm text-destructive">
+      Couldn't load availability: {error instanceof Error ? error.message : "Please try again."}
+    </div>
   ),
 });
 

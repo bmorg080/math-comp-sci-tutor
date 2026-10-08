@@ -31,7 +31,9 @@ import {
 export const Route = createFileRoute("/_authenticated/lessons")({
   component: LessonsPage,
   errorComponent: ({ error }) => (
-    <div className="p-8 text-sm text-destructive">Couldn't load lessons: {error.message}</div>
+    <div className="p-8 text-sm text-destructive">
+      Couldn't load lessons: {error instanceof Error ? error.message : "Please try again."}
+    </div>
   ),
 });
 

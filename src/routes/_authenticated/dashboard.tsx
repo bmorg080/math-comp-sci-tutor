@@ -20,7 +20,9 @@ import { AccountSettingsDialog } from "@/components/AccountSettingsDialog";
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
   errorComponent: ({ error }) => (
-    <div className="p-8 text-sm text-destructive">Couldn't load dashboard: {error.message}</div>
+    <div className="p-8 text-sm text-destructive">
+      Couldn't load dashboard: {error instanceof Error ? error.message : "Please try again."}
+    </div>
   ),
 });
 

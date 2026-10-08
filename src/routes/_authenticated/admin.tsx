@@ -48,7 +48,9 @@ export const Route = createFileRoute("/_authenticated/admin")({
   },
   component: AdminPage,
   errorComponent: ({ error }) => (
-    <div className="p-8 text-sm text-destructive">Admin: {error.message}</div>
+    <div className="p-8 text-sm text-destructive">
+      Admin: {error instanceof Error ? error.message : "Please try again."}
+    </div>
   ),
 });
 
