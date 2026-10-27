@@ -6,7 +6,7 @@ import { Mail } from "lucide-react";
 const TUTOR_EMAIL = "brian@brianmorgantutor.com";
 
 const FALLBACK_BIO =
-  "I am a high school computer science teacher and math tutor based in Boston. I work with students in middle school through high school in Pre-Algebra, Algebra I, Algebra II, Geometry, Pre-Calculus, and Calculus, as well as SAT Math Prep.";
+  "I am a high school computer science teacher and math tutor based in Arlington. I work with students in middle school through high school in Pre-Algebra, Algebra I, Algebra II, Geometry, Pre-Calculus, and Calculus, as well as SAT Math Prep.";
 
 /**
  * The stored bio is written for the full site, so it ends with an invitation to
