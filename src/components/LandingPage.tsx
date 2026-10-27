@@ -63,7 +63,7 @@ export function LandingPage() {
             </h1>
             <p className="mt-6 max-w-2xl text-lg text-muted-foreground">
               {settings?.tutor_bio ||
-                "I am a high school computer science teacher and math tutor based in Boston. I work with students in middle school through high school in Pre-Algebra, Algebra I, Algebra II, Geometry, Pre-Calculus, and Calculus, as well as SAT Math Prep."}
+                "I am a high school computer science teacher and math tutor based in Arlington. I work with students in middle school through high school in Pre-Algebra, Algebra I, Algebra II, Geometry, Pre-Calculus, and Calculus, as well as SAT Math Prep."}
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button asChild size="lg">
