@@ -58,8 +58,6 @@ export function HoldingPage() {
           {bio}
         </p>
 
-        <Reviews className="mt-12" />
-
         <div className="mt-10 border-t pt-8">
           <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
             Get in touch
@@ -72,6 +70,8 @@ export function HoldingPage() {
             {TUTOR_EMAIL}
           </a>
         </div>
+
+        <Reviews className="mt-12" />
       </main>
 
       <footer className="border-t bg-surface/50">
