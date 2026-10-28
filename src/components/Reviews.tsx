@@ -17,6 +17,12 @@ export const REVIEWS: Review[] = [
     author: "E.W., M.Ed.",
     source: "Fellow educator",
   },
+  {
+    quote:
+      "Brian was able to establish rapport within the first couple of online sessions, which allowed my daughter to begin learning right away.",
+    author: "K.F.",
+    source: "Parent",
+  },
 ];
 
 export function Reviews({ className = "" }: { className?: string }) {
