@@ -5,6 +5,7 @@ import { getPublicHomeData } from "@/lib/public-data.functions";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { CalendarDays, GraduationCap, Mail, Sparkles, ShieldCheck } from "lucide-react";
+import { Reviews } from "@/components/Reviews";
 
 const TUTOR_EMAIL = "brian@brianmorgantutor.com";
 
@@ -179,6 +180,8 @@ export function LandingPage() {
             </div>
           </section>
         )}
+
+        <Reviews className="mx-auto max-w-6xl px-6 py-12" />
 
         {/* How it works & policies */}
         <section id="policies" className="mx-auto max-w-6xl px-6 py-12">
