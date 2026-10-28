@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getPublicHomeData } from "@/lib/public-data.functions";
 import { Mail } from "lucide-react";
+import { Reviews } from "@/components/Reviews";
 
 const TUTOR_EMAIL = "brian@brianmorgantutor.com";
 
@@ -56,6 +57,8 @@ export function HoldingPage() {
         <p className="mt-6 whitespace-pre-line text-lg leading-relaxed text-muted-foreground">
           {bio}
         </p>
+
+        <Reviews className="mt-12" />
 
         <div className="mt-10 border-t pt-8">
           <p className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
