@@ -40,13 +40,13 @@ export function Reviews({ className = "" }: { className?: string }) {
         {REVIEWS.map((r) => (
           <figure
             key={`${r.author}-${r.quote.slice(0, 12)}`}
-            className="rounded-2xl border bg-surface p-6"
+            className="flex flex-col rounded-2xl border bg-surface p-6"
           >
             <Quote className="h-5 w-5 text-accent" aria-hidden="true" />
             <blockquote className="mt-3 leading-relaxed text-foreground">
               &ldquo;{r.quote}&rdquo;
             </blockquote>
-            <figcaption className="mt-4 text-sm">
+            <figcaption className="mt-4 text-sm pt-2 mt-auto">
               <span className="font-medium text-foreground">{r.author}</span>
               <span className="text-muted-foreground"> · {r.source}</span>
             </figcaption>
