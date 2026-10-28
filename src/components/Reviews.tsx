@@ -15,7 +15,7 @@ export const REVIEWS: Review[] = [
     quote:
       "As an educator, I quickly recognized that Brian continually adapted his teaching style to match learning needs. Anyone fortunate enough to work and/or know him personally will recognize and appreciate Brian's rare patience and talents.",
     author: "E.W., M.Ed.",
-    source: "Fellow educator",
+    source: "Special education advocate",
   },
   {
     quote:
