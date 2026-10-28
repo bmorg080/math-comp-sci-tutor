@@ -46,7 +46,7 @@ export function Reviews({ className = "" }: { className?: string }) {
             <blockquote className="mt-3 leading-relaxed text-foreground">
               &ldquo;{r.quote}&rdquo;
             </blockquote>
-            <figcaption className="mt-4 text-sm pt-2 mt-auto">
+            <figcaption className="mt-auto pt-4 text-sm">
               <span className="font-medium text-foreground">{r.author}</span>
               <span className="text-muted-foreground"> · {r.source}</span>
             </figcaption>
