@@ -57,5 +57,5 @@ export const Route = createFileRoute("/")({
     ],
   }),
 
-  component: HoldingPage,
+  component: Index,
 });
